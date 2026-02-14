@@ -30,6 +30,7 @@ read -r msg
 
 git add -A
 git commit -m "$msg"
+echo "푸시 중..."
 git push origin main
 
 echo ""
