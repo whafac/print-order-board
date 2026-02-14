@@ -251,29 +251,44 @@ export async function getJobs(filters: {
   return list;
 }
 
+function normalizeCell(value: unknown): string {
+  return String(value ?? "")
+    .replace(/\uFEFF/g, "")
+    .trim();
+}
+
 export async function getJobById(jobId: string): Promise<JobRow | null> {
-  const { sheets, sheetId } = await getSheets();
-  const res = await sheets.spreadsheets.values.get({
-    spreadsheetId: sheetId,
-    range: `${JOBS_SHEET}!A:N`,
-  });
-  const rows = res.data.values ?? [];
-  if (rows.length === 0) {
-    console.error(`[getJobById] jobs_raw sheet is empty or doesn't exist`);
-    return null;
-  }
+  const needle = normalizeCell(jobId);
+  const maxRetries = 2;
 
-  const needle = jobId.trim();
-  // appendJob는 항상 A열에 job_id를 씀 → 헤더 유무와 관계없이 A열(인덱스 0)에서 검색
-  for (let i = 0; i < rows.length; i++) {
-    const row = rows[i] ?? [];
-    const firstCell = (row[0] ?? "").toString().trim();
-    if (firstCell === needle) return rowToJob(row);
-  }
+  for (let attempt = 0; attempt < maxRetries; attempt++) {
+    const { sheets, sheetId } = await getSheets();
+    const res = await sheets.spreadsheets.values.get({
+      spreadsheetId: sheetId,
+      range: `${JOBS_SHEET}!A:N`,
+    });
+    const rows = res.data.values ?? [];
+    if (rows.length === 0) {
+      if (attempt === maxRetries - 1)
+        console.error(`[getJobById] jobs_raw sheet is empty or doesn't exist`);
+      else await new Promise((r) => setTimeout(r, 800));
+      continue;
+    }
 
-  console.warn(
-    `[getJobById] Job not found. jobId=${jobId} rows=${rows.length} firstRowA=${(rows[0] ?? [])[0] ?? "(empty)"}`
-  );
+    for (let i = 0; i < rows.length; i++) {
+      const row = rows[i] ?? [];
+      const firstCell = normalizeCell(row[0]);
+      if (firstCell === needle) return rowToJob(row);
+    }
+
+    if (attempt < maxRetries - 1) {
+      await new Promise((r) => setTimeout(r, 800));
+    } else {
+      console.warn(
+        `[getJobById] Job not found. jobId=${jobId} rows=${rows.length} firstRowA=${normalizeCell((rows[0] ?? [])[0])}`
+      );
+    }
+  }
   return null;
 }
 

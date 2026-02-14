@@ -111,19 +111,19 @@ export function NewOrderClient() {
       setToast("ok");
       // 시트 반영 지연으로 404 방지: 상세 API가 성공할 때까지 대기 후 이동
       const jobId = data.job_id;
-      const maxAttempts = 20;
+      const maxAttempts = 24;
       const intervalMs = 500;
       for (let attempt = 0; attempt < maxAttempts; attempt++) {
-        const r = await fetch(`/api/jobs/${jobId}`);
+        const r = await fetch(`/api/jobs/${jobId}`, { cache: "no-store" });
         if (r.ok) {
+          await new Promise((resolve) => setTimeout(resolve, 400));
           router.push(`/jobs/${jobId}`);
           router.refresh();
           return;
         }
         await new Promise((resolve) => setTimeout(resolve, intervalMs));
       }
-      // 타임아웃 후에도 이동 (목록에서 확인 가능)
-      router.push(`/jobs/${jobId}`);
+      router.push("/list");
       router.refresh();
     } catch {
       setToast("err");

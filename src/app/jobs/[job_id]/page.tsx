@@ -2,6 +2,9 @@ import { notFound } from "next/navigation";
 import { JobDetailClient } from "@/components/JobDetailClient";
 import { getJobById } from "@/lib/sheets";
 
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
 export default async function JobPage({ params }: { params: Promise<{ job_id: string }> }) {
   const { job_id } = await params;
   try {
