@@ -25,6 +25,18 @@ const STATUS_LABELS: Record<string, string> = {
   완료: "완료",
 };
 
+const STATUS_STYLES: Record<string, string> = {
+  접수: "bg-sky-100 text-sky-800",
+  진행: "bg-amber-100 text-amber-800",
+  납품: "bg-violet-100 text-violet-800",
+  검수완료: "bg-blue-100 text-blue-800",
+  완료: "bg-emerald-100 text-emerald-800",
+};
+
+function getStatusStyle(status: string): string {
+  return STATUS_STYLES[status] ?? "bg-slate-100 text-slate-700";
+}
+
 const thisMonth = () => {
   const d = new Date();
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
@@ -220,12 +232,7 @@ export function ListPageClient() {
                       onClick={() => router.push(`/jobs/${job.job_id}`)}
                     >
                       <td className="px-4 py-2">
-                        <span className={`inline-block rounded-full px-2 py-0.5 text-xs font-medium ${
-                          job.status === "완료" ? "bg-emerald-100 text-emerald-800" :
-                          job.status === "검수완료" ? "bg-blue-100 text-blue-800" :
-                          job.status === "진행" ? "bg-amber-100 text-amber-800" :
-                          "bg-slate-100 text-slate-700"
-                        }`}>
+                        <span className={`inline-block rounded-full px-2 py-0.5 text-xs font-medium ${getStatusStyle(job.status)}`}>
                           {STATUS_LABELS[job.status] ?? job.status}
                         </span>
                       </td>
