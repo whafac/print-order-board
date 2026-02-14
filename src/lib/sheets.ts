@@ -90,6 +90,12 @@ async function getSheets() {
 const specCache: { data: SpecRow[]; at: number } = { data: [], at: 0 };
 const CACHE_TTL = 60 * 1000;
 
+function specDataStart(rows: string[][]): number {
+  if (rows.length === 0) return 0;
+  const first = rows[0] ?? [];
+  return headerCol(first, "media_id") >= 0 ? 1 : 0;
+}
+
 export async function getSpecList(): Promise<SpecRow[]> {
   const now = Date.now();
   if (specCache.data.length && now - specCache.at < CACHE_TTL) {
@@ -101,8 +107,9 @@ export async function getSpecList(): Promise<SpecRow[]> {
     range: `${SPEC_SHEET}!A:L`,
   });
   const rows = res.data.values ?? [];
+  const start = specDataStart(rows);
   const list: SpecRow[] = [];
-  for (let i = 1; i < rows.length; i++) {
+  for (let i = start; i < rows.length; i++) {
     list.push(rowToSpec(rows[i] ?? []));
   }
   specCache.data = list;
@@ -143,25 +150,27 @@ export async function updateSpecByMediaId(mediaId: string, updates: Partial<Spec
     range: `${SPEC_SHEET}!A:L`,
   });
   const rows = res.data.values ?? [];
+  if (rows.length < 1) return false;
   const header = rows[0] ?? [];
-  const mediaIdCol = header.indexOf("media_id");
-  if (mediaIdCol === -1) return false;
-  for (let i = 1; i < rows.length; i++) {
+  const mediaIdColIdx = headerCol(header, "media_id");
+  const mediaIdCol = mediaIdColIdx >= 0 ? mediaIdColIdx : 0;
+  const dataStart = mediaIdColIdx >= 0 ? 1 : 0;
+  const needle = normalizeCell(mediaId);
+  for (let i = dataStart; i < rows.length; i++) {
     const row = rows[i] ?? [];
-    if (row[mediaIdCol] === mediaId) {
-      const current = rowToSpec(row);
-      const merged: SpecRow = { ...current, ...updates };
-      const newRow = specToRow(merged);
-      const range = `${SPEC_SHEET}!A${i + 1}:L${i + 1}`;
-      await sheets.spreadsheets.values.update({
-        spreadsheetId: sheetId,
-        range,
-        valueInputOption: "USER_ENTERED",
-        requestBody: { values: [newRow] },
-      });
-      clearSpecCache();
-      return true;
-    }
+    if (normalizeCell(row[mediaIdCol]) !== needle) continue;
+    const current = rowToSpec(row);
+    const merged: SpecRow = { ...current, ...updates };
+    const newRow = specToRow(merged);
+    const range = `${SPEC_SHEET}!A${i + 1}:L${i + 1}`;
+    await sheets.spreadsheets.values.update({
+      spreadsheetId: sheetId,
+      range,
+      valueInputOption: "USER_ENTERED",
+      requestBody: { values: [newRow] },
+    });
+    clearSpecCache();
+    return true;
   }
   return false;
 }
@@ -189,13 +198,19 @@ export async function appendJob(row: Omit<JobRow, "job_id" | "created_at" | "las
   ];
   const { sheets, sheetId } = await getSheets();
   try {
-    await sheets.spreadsheets.values.append({
+    const res = await sheets.spreadsheets.values.get({
       spreadsheetId: sheetId,
       range: `${JOBS_SHEET}!A:N`,
+    });
+    const rows = res.data.values ?? [];
+    const nextRow = rows.length + 1;
+    await sheets.spreadsheets.values.update({
+      spreadsheetId: sheetId,
+      range: `${JOBS_SHEET}!A${nextRow}:N${nextRow}`,
       valueInputOption: "USER_ENTERED",
       requestBody: { values: [newRow] },
     });
-    console.log(`Job created: ${id}`);
+    console.log(`Job created: ${id} (row ${nextRow})`);
     return id;
   } catch (e) {
     console.error(`Failed to append job to ${JOBS_SHEET}:`, e);

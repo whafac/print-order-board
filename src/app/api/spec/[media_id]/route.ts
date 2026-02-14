@@ -30,7 +30,7 @@ export async function PATCH(
   }
   const updates: Partial<SpecRow> = {};
   const keys: (keyof SpecRow)[] = [
-    "media_name", "default_vendor", "trim_size", "pages",
+    "media_id", "media_name", "default_vendor", "trim_size", "pages",
     "cover_paper", "inner_paper", "print_color", "binding",
     "finishing", "packaging_delivery", "file_rule",
   ];
