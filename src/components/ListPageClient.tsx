@@ -42,6 +42,18 @@ const thisMonth = () => {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
 };
 
+function formatCreatedAt(iso: string | undefined): string {
+  if (!iso) return "-";
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return iso.slice(0, 10) || "-";
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  const h = String(d.getHours()).padStart(2, "0");
+  const min = String(d.getMinutes()).padStart(2, "0");
+  return `${y}-${m}-${day} ${h}:${min}`;
+}
+
 export function ListPageClient() {
   const router = useRouter();
   const [jobs, setJobs] = useState<Job[]>([]);
@@ -241,7 +253,7 @@ export function ListPageClient() {
                       <td className="px-4 py-2 text-slate-700">{job.qty || "-"}</td>
                       <td className="px-4 py-2 text-slate-700">{job.vendor || "-"}</td>
                       <td className="px-4 py-2 text-slate-700">{job.requester_name || "-"}</td>
-                      <td className="px-4 py-2 text-slate-600">{job.created_at ? job.created_at.slice(0, 10) : "-"}</td>
+                      <td className="px-4 py-2 text-slate-600">{formatCreatedAt(job.created_at)}</td>
                       <td className="px-4 py-2">
                         {job.file_link ? (
                           <a
