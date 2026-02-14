@@ -1,0 +1,323 @@
+import { google } from "googleapis";
+
+const SHEET_ID = process.env.GOOGLE_SHEET_ID;
+const SPEC_SHEET = "spec_master";
+const JOBS_SHEET = "jobs_raw";
+
+function getAuth() {
+  const email = process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL;
+  const key = process.env.GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY?.replace(/\\n/g, "\n");
+  if (!email || !key) throw new Error("Google service account env not set");
+  return new google.auth.JWT({
+    email,
+    key,
+    scopes: ["https://www.googleapis.com/auth/spreadsheets"],
+  });
+}
+
+export interface SpecRow {
+  media_id: string;
+  media_name: string;
+  default_vendor: string;
+  trim_size: string;
+  pages: string;
+  cover_paper: string;
+  inner_paper: string;
+  print_color: string;
+  binding: string;
+  finishing: string;
+  packaging_delivery: string;
+  file_rule: string;
+}
+
+const SPEC_HEADERS: (keyof SpecRow)[] = [
+  "media_id", "media_name", "default_vendor", "trim_size", "pages",
+  "cover_paper", "inner_paper", "print_color", "binding", "finishing",
+  "packaging_delivery", "file_rule",
+];
+
+export interface JobRow {
+  job_id: string;
+  created_at: string;
+  requester_name: string;
+  media_id: string;
+  media_name: string;
+  vendor: string;
+  due_date: string;
+  qty: string;
+  file_link: string;
+  changes_note: string;
+  status: string;
+  spec_snapshot: string;
+  last_updated_at: string;
+  last_updated_by: string;
+}
+
+const JOB_HEADERS: (keyof JobRow)[] = [
+  "job_id", "created_at", "requester_name", "media_id", "media_name",
+  "vendor", "due_date", "qty", "file_link", "changes_note", "status",
+  "spec_snapshot", "last_updated_at", "last_updated_by",
+];
+
+function rowToSpec(row: string[]): SpecRow {
+  const o: Record<string, string> = {};
+  SPEC_HEADERS.forEach((h, i) => { o[h] = row[i] ?? ""; });
+  return o as unknown as SpecRow;
+}
+
+function rowToJob(row: string[]): JobRow {
+  const o: Record<string, string> = {};
+  JOB_HEADERS.forEach((h, i) => { o[h] = row[i] ?? ""; });
+  return o as unknown as JobRow;
+}
+
+async function getSheets() {
+  if (!SHEET_ID) throw new Error("GOOGLE_SHEET_ID not set");
+  const auth = getAuth();
+  const sheets = google.sheets({ version: "v4", auth });
+  return { sheets, sheetId: SHEET_ID };
+}
+
+const specCache: { data: SpecRow[]; at: number } = { data: [], at: 0 };
+const CACHE_TTL = 60 * 1000;
+
+export async function getSpecList(): Promise<SpecRow[]> {
+  const now = Date.now();
+  if (specCache.data.length && now - specCache.at < CACHE_TTL) {
+    return specCache.data;
+  }
+  const { sheets, sheetId } = await getSheets();
+  const res = await sheets.spreadsheets.values.get({
+    spreadsheetId: sheetId,
+    range: `${SPEC_SHEET}!A:L`,
+  });
+  const rows = res.data.values ?? [];
+  const list: SpecRow[] = [];
+  for (let i = 1; i < rows.length; i++) {
+    list.push(rowToSpec(rows[i] ?? []));
+  }
+  specCache.data = list;
+  specCache.at = now;
+  return list;
+}
+
+export async function getSpecByMediaId(mediaId: string): Promise<SpecRow | null> {
+  const list = await getSpecList();
+  return list.find((s) => s.media_id === mediaId) ?? null;
+}
+
+function specToRow(s: SpecRow): string[] {
+  return SPEC_HEADERS.map((h) => s[h] ?? "");
+}
+
+function clearSpecCache() {
+  specCache.data = [];
+  specCache.at = 0;
+}
+
+export async function appendSpec(spec: SpecRow): Promise<void> {
+  const { sheets, sheetId } = await getSheets();
+  const row = specToRow(spec);
+  await sheets.spreadsheets.values.append({
+    spreadsheetId: sheetId,
+    range: `${SPEC_SHEET}!A:L`,
+    valueInputOption: "USER_ENTERED",
+    requestBody: { values: [row] },
+  });
+  clearSpecCache();
+}
+
+export async function updateSpecByMediaId(mediaId: string, updates: Partial<SpecRow>): Promise<boolean> {
+  const { sheets, sheetId } = await getSheets();
+  const res = await sheets.spreadsheets.values.get({
+    spreadsheetId: sheetId,
+    range: `${SPEC_SHEET}!A:L`,
+  });
+  const rows = res.data.values ?? [];
+  const header = rows[0] ?? [];
+  const mediaIdCol = header.indexOf("media_id");
+  if (mediaIdCol === -1) return false;
+  for (let i = 1; i < rows.length; i++) {
+    const row = rows[i] ?? [];
+    if (row[mediaIdCol] === mediaId) {
+      const current = rowToSpec(row);
+      const merged: SpecRow = { ...current, ...updates };
+      const newRow = specToRow(merged);
+      const range = `${SPEC_SHEET}!A${i + 1}:L${i + 1}`;
+      await sheets.spreadsheets.values.update({
+        spreadsheetId: sheetId,
+        range,
+        valueInputOption: "USER_ENTERED",
+        requestBody: { values: [newRow] },
+      });
+      clearSpecCache();
+      return true;
+    }
+  }
+  return false;
+}
+
+function jobId(): string {
+  const now = new Date();
+  const y = now.getFullYear();
+  const m = String(now.getMonth() + 1).padStart(2, "0");
+  const d = String(now.getDate()).padStart(2, "0");
+  const h = String(now.getHours()).padStart(2, "0");
+  const min = String(now.getMinutes()).padStart(2, "0");
+  const s = String(now.getSeconds()).padStart(2, "0");
+  const r = String(Math.floor(Math.random() * 10000)).padStart(4, "0");
+  return `${y}${m}${d}-${h}${min}${s}-${r}`;
+}
+
+export async function appendJob(row: Omit<JobRow, "job_id" | "created_at" | "last_updated_at">): Promise<string> {
+  const id = jobId();
+  const created = new Date().toISOString();
+  const lastUpdated = created;
+  const newRow: string[] = [
+    id, created, row.requester_name, row.media_id, row.media_name,
+    row.vendor, row.due_date, row.qty, row.file_link, row.changes_note,
+    row.status ?? "접수", row.spec_snapshot, lastUpdated, row.last_updated_by ?? "",
+  ];
+  const { sheets, sheetId } = await getSheets();
+  try {
+    await sheets.spreadsheets.values.append({
+      spreadsheetId: sheetId,
+      range: `${JOBS_SHEET}!A:N`,
+      valueInputOption: "USER_ENTERED",
+      requestBody: { values: [newRow] },
+    });
+    console.log(`Job created: ${id}`);
+    return id;
+  } catch (e) {
+    console.error(`Failed to append job to ${JOBS_SHEET}:`, e);
+    throw e;
+  }
+}
+
+function norm(s: string): string {
+  return String(s ?? "").toLowerCase().trim().replace(/\s+/g, "_");
+}
+function headerCol(header: string[], name: string): number {
+  const n = norm(name);
+  return header.findIndex((c) => norm(c) === n);
+}
+
+function jobsDataStart(rows: string[][]): number {
+  if (rows.length === 0) return 0;
+  const first = rows[0] ?? [];
+  return headerCol(first, "job_id") !== -1 ? 1 : 0;
+}
+
+export async function getJobs(filters: {
+  month?: string;
+  status?: string;
+  vendor?: string;
+  media_id?: string;
+  q?: string;
+}): Promise<JobRow[]> {
+  const { sheets, sheetId } = await getSheets();
+  const res = await sheets.spreadsheets.values.get({
+    spreadsheetId: sheetId,
+    range: `${JOBS_SHEET}!A:N`,
+  });
+  const rows = res.data.values ?? [];
+  const start = jobsDataStart(rows);
+  let list: JobRow[] = [];
+  for (let i = start; i < rows.length; i++) {
+    list.push(rowToJob(rows[i] ?? []));
+  }
+
+  if (filters.month) {
+    const [y, m] = filters.month.split("-");
+    list = list.filter((j) => {
+      const d = j.created_at.slice(0, 7);
+      return d === `${y}-${m}`;
+    });
+  }
+  if (filters.status) list = list.filter((j) => j.status === filters.status);
+  if (filters.vendor) list = list.filter((j) => j.vendor === filters.vendor);
+  if (filters.media_id) list = list.filter((j) => j.media_id === filters.media_id);
+  if (filters.q) {
+    const q = filters.q.toLowerCase();
+    list = list.filter(
+      (j) =>
+        j.job_id.toLowerCase().includes(q) ||
+        j.requester_name.toLowerCase().includes(q) ||
+        j.media_name.toLowerCase().includes(q)
+    );
+  }
+
+  list.sort((a, b) => (b.created_at > a.created_at ? 1 : -1));
+  return list;
+}
+
+export async function getJobById(jobId: string): Promise<JobRow | null> {
+  const { sheets, sheetId } = await getSheets();
+  const res = await sheets.spreadsheets.values.get({
+    spreadsheetId: sheetId,
+    range: `${JOBS_SHEET}!A:N`,
+  });
+  const rows = res.data.values ?? [];
+  if (rows.length === 0) {
+    console.error(`jobs_raw sheet is empty or doesn't exist`);
+    return null;
+  }
+  const header = rows[0] ?? [];
+  let jobIdCol = headerCol(header, "job_id");
+  let dataStartIndex: number;
+
+  if (jobIdCol === -1) {
+    jobIdCol = 0;
+    dataStartIndex = 0;
+  } else {
+    dataStartIndex = 1;
+  }
+
+  for (let i = dataStartIndex; i < rows.length; i++) {
+    const row = rows[i] ?? [];
+    const cell = (row[jobIdCol] ?? "").toString().trim();
+    if (cell === jobId.trim()) return rowToJob(row);
+  }
+  console.warn(
+    `[getJobById] Job not found. jobId=${jobId} rows=${rows.length} dataStart=${dataStartIndex} jobIdCol=${jobIdCol} firstCell=${(rows[dataStartIndex] ?? [])[jobIdCol] ?? "(none)"}`
+  );
+  return null;
+}
+
+export async function updateJob(
+  jobId: string,
+  updates: { status?: string; last_updated_by?: string }
+): Promise<boolean> {
+  const { sheets, sheetId } = await getSheets();
+  const res = await sheets.spreadsheets.values.get({
+    spreadsheetId: sheetId,
+    range: `${JOBS_SHEET}!A:N`,
+  });
+  const rows = res.data.values ?? [];
+  if (rows.length === 0) return false;
+  const header = rows[0] ?? [];
+  const hasHeader = headerCol(header, "job_id") !== -1;
+  const jobIdCol = hasHeader ? headerCol(header, "job_id") : 0;
+  const statusCol = hasHeader ? headerCol(header, "status") : JOB_HEADERS.indexOf("status");
+  const lastUpdatedAtCol = hasHeader ? headerCol(header, "last_updated_at") : JOB_HEADERS.indexOf("last_updated_at");
+  const lastUpdatedByCol = hasHeader ? headerCol(header, "last_updated_by") : JOB_HEADERS.indexOf("last_updated_by");
+  const dataStart = hasHeader ? 1 : 0;
+
+  for (let i = dataStart; i < rows.length; i++) {
+    const row = rows[i] ?? [];
+    if ((row[jobIdCol] ?? "").toString().trim() !== jobId.trim()) continue;
+    const newRow = [...row];
+    if (updates.status !== undefined && statusCol >= 0) newRow[statusCol] = updates.status;
+    if (updates.last_updated_by !== undefined && lastUpdatedByCol >= 0) newRow[lastUpdatedByCol] = updates.last_updated_by;
+    if (lastUpdatedAtCol >= 0) newRow[lastUpdatedAtCol] = new Date().toISOString();
+    const range = `${JOBS_SHEET}!A${i + 1}:N${i + 1}`;
+    await sheets.spreadsheets.values.update({
+      spreadsheetId: sheetId,
+      range,
+      valueInputOption: "USER_ENTERED",
+      requestBody: { values: [newRow] },
+    });
+    return true;
+  }
+  return false;
+}
