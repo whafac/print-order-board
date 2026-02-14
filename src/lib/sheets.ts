@@ -71,6 +71,15 @@ function rowToJob(row: string[]): JobRow {
   return o as unknown as JobRow;
 }
 
+function rowToJobByHeader(row: string[], header: string[]): JobRow {
+  const o: Record<string, string> = {};
+  JOB_HEADERS.forEach((key) => {
+    const col = headerCol(header, key);
+    o[key] = col >= 0 ? (row[col] ?? "").toString().trim() : "";
+  });
+  return o as unknown as JobRow;
+}
+
 async function getSheets() {
   if (!SHEET_ID) throw new Error("GOOGLE_SHEET_ID not set");
   const auth = getAuth();
@@ -222,16 +231,24 @@ export async function getJobs(filters: {
   });
   const rows = res.data.values ?? [];
   const start = jobsDataStart(rows);
+  const header = rows[0] ?? [];
+  const hasHeader = start === 1;
   let list: JobRow[] = [];
   for (let i = start; i < rows.length; i++) {
-    list.push(rowToJob(rows[i] ?? []));
+    const row = rows[i] ?? [];
+    list.push(hasHeader ? rowToJobByHeader(row, header) : rowToJob(row));
   }
 
   if (filters.month) {
     const [y, m] = filters.month.split("-");
     list = list.filter((j) => {
-      const d = j.created_at.slice(0, 7);
-      return d === `${y}-${m}`;
+      const raw = (j.created_at ?? "").toString().trim();
+      const datePart = raw.slice(0, 7);
+      if (/^\d{4}-\d{2}$/.test(datePart)) return datePart === `${y}-${m}`;
+      const parsed = new Date(raw);
+      if (!Number.isNaN(parsed.getTime()))
+        return parsed.getFullYear() === Number(y) && parsed.getMonth() + 1 === Number(m);
+      return false;
     });
   }
   if (filters.status) list = list.filter((j) => j.status === filters.status);
