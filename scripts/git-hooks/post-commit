@@ -1,0 +1,3 @@
+#!/bin/sh
+# 커밋 후 자동으로 origin main 에 푸시 (Vercel 자동 배포 연동)
+exec git push origin main

@@ -66,6 +66,20 @@ Next.js는 [Vercel](https://vercel.com) 에서 배포하는 것이 가장 간단
 
 ## 3. 배포 후 작업 이어가기
 
+### 수정 후 배포 (확인 시 자동 업데이트)
+
+코드 수정이 끝나면 아래 명령을 실행하세요. **배포할까요?** 라고 물어보고, `y` 입력 시 커밋·푸시 후 Vercel이 자동 배포합니다.
+
+```bash
+cd /Users/hoon/projects/print-order-board
+npm run deploy
+```
+
+(또는 `./scripts/deploy.sh` — 처음 한 번은 `chmod +x scripts/deploy.sh` 로 실행 권한 부여)
+
+- 변경 파일 목록이 보이고, `배포할까요? (y/n):` 에 **y** 입력 → 커밋 메시지 입력(비우면 "chore: 배포 업데이트") → 푸시 → Vercel 자동 배포
+- **n** 입력 시 취소
+
 ### 일상적인 흐름
 
 1. **최신 코드 받기** (다른 PC에서 작업했거나 팀원이 push 한 경우)
@@ -79,16 +93,15 @@ Next.js는 [Vercel](https://vercel.com) 에서 배포하는 것이 가장 간단
    # http://localhost:3000 에서 확인
    ```
 
-3. **GitHub에 올리기**
+3. **배포하기**
    ```bash
-   git add -A
-   git commit -m "수정 내용 요약"
-   git push origin main
+   ./scripts/deploy.sh
    ```
+   → "배포할까요? (y/n):" 에 **y** 입력하면 푸시 후 Vercel 자동 배포
 
 4. **Vercel**  
-   - GitHub와 연동했으면 **push 시 자동 배포**  
-   - Vercel 대시보드 → 해당 프로젝트 → **Deployments** 에서 진행 상황 확인
+   - push 시 자동 배포  
+   - Vercel 대시보드 → **Deployments** 에서 진행 상황 확인
 
 ### 404 등 문제가 있을 때
 

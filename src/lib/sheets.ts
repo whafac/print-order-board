@@ -259,27 +259,20 @@ export async function getJobById(jobId: string): Promise<JobRow | null> {
   });
   const rows = res.data.values ?? [];
   if (rows.length === 0) {
-    console.error(`jobs_raw sheet is empty or doesn't exist`);
+    console.error(`[getJobById] jobs_raw sheet is empty or doesn't exist`);
     return null;
   }
-  const header = rows[0] ?? [];
-  let jobIdCol = headerCol(header, "job_id");
-  let dataStartIndex: number;
 
-  if (jobIdCol === -1) {
-    jobIdCol = 0;
-    dataStartIndex = 0;
-  } else {
-    dataStartIndex = 1;
-  }
-
-  for (let i = dataStartIndex; i < rows.length; i++) {
+  const needle = jobId.trim();
+  // appendJob는 항상 A열에 job_id를 씀 → 헤더 유무와 관계없이 A열(인덱스 0)에서 검색
+  for (let i = 0; i < rows.length; i++) {
     const row = rows[i] ?? [];
-    const cell = (row[jobIdCol] ?? "").toString().trim();
-    if (cell === jobId.trim()) return rowToJob(row);
+    const firstCell = (row[0] ?? "").toString().trim();
+    if (firstCell === needle) return rowToJob(row);
   }
+
   console.warn(
-    `[getJobById] Job not found. jobId=${jobId} rows=${rows.length} dataStart=${dataStartIndex} jobIdCol=${jobIdCol} firstCell=${(rows[dataStartIndex] ?? [])[jobIdCol] ?? "(none)"}`
+    `[getJobById] Job not found. jobId=${jobId} rows=${rows.length} firstRowA=${(rows[0] ?? [])[0] ?? "(empty)"}`
   );
   return null;
 }
