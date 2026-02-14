@@ -135,7 +135,7 @@ export function NewOrderClient() {
       } else {
         payload.media_name = sheetMediaName.trim() || "낱장 인쇄물";
         payload.qty = `${kindsCount}종 ${sheetsPerKind}매`;
-        const selectedFinishing = [...SHEET_FINISHING_OPTIONS.filter((k) => finishing[k])];
+        const selectedFinishing: string[] = [...SHEET_FINISHING_OPTIONS.filter((k) => finishing[k])];
         if (finishing["기타"] && finishingEtc.trim()) selectedFinishing.push(`기타: ${finishingEtc.trim()}`);
         payload.type_spec = {
           size: size.trim(),
