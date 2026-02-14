@@ -51,12 +51,15 @@ export interface JobRow {
   spec_snapshot: string;
   last_updated_at: string;
   last_updated_by: string;
+  order_type: string;
+  type_spec_snapshot: string;
 }
 
 const JOB_HEADERS: (keyof JobRow)[] = [
   "job_id", "created_at", "requester_name", "media_id", "media_name",
   "vendor", "due_date", "qty", "file_link", "changes_note", "status",
   "spec_snapshot", "last_updated_at", "last_updated_by",
+  "order_type", "type_spec_snapshot",
 ];
 
 function rowToSpec(row: string[]): SpecRow {
@@ -195,18 +198,19 @@ export async function appendJob(row: Omit<JobRow, "job_id" | "created_at" | "las
     id, created, row.requester_name, row.media_id, row.media_name,
     row.vendor, row.due_date, row.qty, row.file_link, row.changes_note,
     row.status ?? "접수", row.spec_snapshot, lastUpdated, row.last_updated_by ?? "",
+    row.order_type ?? "", row.type_spec_snapshot ?? "",
   ];
   const { sheets, sheetId } = await getSheets();
   try {
     const res = await sheets.spreadsheets.values.get({
       spreadsheetId: sheetId,
-      range: `${JOBS_SHEET}!A:N`,
+      range: `${JOBS_SHEET}!A:P`,
     });
     const rows = res.data.values ?? [];
     const nextRow = rows.length + 1;
     await sheets.spreadsheets.values.update({
       spreadsheetId: sheetId,
-      range: `${JOBS_SHEET}!A${nextRow}:N${nextRow}`,
+      range: `${JOBS_SHEET}!A${nextRow}:P${nextRow}`,
       valueInputOption: "USER_ENTERED",
       requestBody: { values: [newRow] },
     });
@@ -242,7 +246,7 @@ export async function getJobs(filters: {
   const { sheets, sheetId } = await getSheets();
   const res = await sheets.spreadsheets.values.get({
     spreadsheetId: sheetId,
-    range: `${JOBS_SHEET}!A:N`,
+    range: `${JOBS_SHEET}!A:P`,
   });
   const rows = res.data.values ?? [];
   const start = jobsDataStart(rows);
@@ -295,12 +299,12 @@ export async function getJobById(jobId: string): Promise<JobRow | null> {
 
   for (let attempt = 0; attempt < maxRetries; attempt++) {
     const { sheets, sheetId } = await getSheets();
-    const res = await sheets.spreadsheets.values.get({
-      spreadsheetId: sheetId,
-      range: `${JOBS_SHEET}!A:N`,
-    });
-    const rows = res.data.values ?? [];
-    if (rows.length === 0) {
+  const res = await sheets.spreadsheets.values.get({
+    spreadsheetId: sheetId,
+    range: `${JOBS_SHEET}!A:P`,
+  });
+  const rows = res.data.values ?? [];
+  if (rows.length === 0) {
       if (attempt === maxRetries - 1)
         console.error(`[getJobById] jobs_raw sheet is empty or doesn't exist`);
       else await new Promise((r) => setTimeout(r, 800));
@@ -331,7 +335,7 @@ export async function updateJob(
   const { sheets, sheetId } = await getSheets();
   const res = await sheets.spreadsheets.values.get({
     spreadsheetId: sheetId,
-    range: `${JOBS_SHEET}!A:N`,
+    range: `${JOBS_SHEET}!A:P`,
   });
   const rows = res.data.values ?? [];
   if (rows.length === 0) return false;
@@ -346,11 +350,12 @@ export async function updateJob(
   for (let i = dataStart; i < rows.length; i++) {
     const row = rows[i] ?? [];
     if ((row[jobIdCol] ?? "").toString().trim() !== jobId.trim()) continue;
-    const newRow = [...row];
+    const newRow: string[] = [...row];
+    while (newRow.length < JOB_HEADERS.length) newRow.push("");
     if (updates.status !== undefined && statusCol >= 0) newRow[statusCol] = updates.status;
     if (updates.last_updated_by !== undefined && lastUpdatedByCol >= 0) newRow[lastUpdatedByCol] = updates.last_updated_by;
     if (lastUpdatedAtCol >= 0) newRow[lastUpdatedAtCol] = new Date().toISOString();
-    const range = `${JOBS_SHEET}!A${i + 1}:N${i + 1}`;
+    const range = `${JOBS_SHEET}!A${i + 1}:P${i + 1}`;
     await sheets.spreadsheets.values.update({
       spreadsheetId: sheetId,
       range,

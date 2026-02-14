@@ -18,6 +18,8 @@ interface Job {
   spec_snapshot: string;
   last_updated_at: string;
   last_updated_by: string;
+  order_type?: string;
+  type_spec_snapshot?: string;
 }
 
 const STATUS_OPTIONS = ["접수", "진행", "납품", "검수완료", "완료"];
@@ -45,6 +47,12 @@ export function JobDetailClient({ job }: { job: Job }) {
   try {
     if (job.spec_snapshot) spec = JSON.parse(job.spec_snapshot);
   } catch {}
+
+  let typeSpec: Record<string, unknown> = {};
+  try {
+    if (job.type_spec_snapshot) typeSpec = JSON.parse(job.type_spec_snapshot);
+  } catch {}
+  const isSheet = job.order_type === "sheet";
 
   async function logout() {
     await fetch("/api/auth/logout", { method: "POST" });
@@ -139,20 +147,40 @@ export function JobDetailClient({ job }: { job: Job }) {
           </dl>
         </section>
 
-        <section className="mb-6 rounded-xl border border-slate-200 bg-slate-50 p-5 shadow-sm">
-          <h2 className="mb-3 text-sm font-medium text-slate-500">제작사양 (스냅샷)</h2>
-          <dl className="grid grid-cols-1 gap-2 text-sm sm:grid-cols-2">
-            <div><dt className="text-slate-500">판형</dt><dd className="text-slate-800">{spec.trim_size ?? "-"}</dd></div>
-            <div><dt className="text-slate-500">면수</dt><dd className="text-slate-800">{spec.pages ?? "-"}</dd></div>
-            <div><dt className="text-slate-500">표지</dt><dd className="text-slate-800">{spec.cover_paper ?? "-"}</dd></div>
-            <div><dt className="text-slate-500">내지</dt><dd className="text-slate-800">{spec.inner_paper ?? "-"}</dd></div>
-            <div><dt className="text-slate-500">도수</dt><dd className="text-slate-800">{spec.print_color ?? "-"}</dd></div>
-            <div><dt className="text-slate-500">제본</dt><dd className="text-slate-800">{spec.binding ?? "-"}</dd></div>
-            <div><dt className="text-slate-500">후가공</dt><dd className="text-slate-800">{spec.finishing ?? "-"}</dd></div>
-            <div><dt className="text-slate-500">포장·납품</dt><dd className="text-slate-800">{spec.packaging_delivery ?? "-"}</dd></div>
-            <div className="sm:col-span-2"><dt className="text-slate-500">파일규격</dt><dd className="text-slate-800">{spec.file_rule ?? "-"}</dd></div>
-          </dl>
-        </section>
+        {isSheet ? (
+          <section className="mb-6 rounded-xl border border-slate-200 bg-slate-50 p-5 shadow-sm">
+            <h2 className="mb-3 text-sm font-medium text-slate-500">낱장 인쇄 사양</h2>
+            <dl className="grid grid-cols-1 gap-2 text-sm sm:grid-cols-2">
+              <div><dt className="text-slate-500">사이즈</dt><dd className="text-slate-800">{String(typeSpec.size ?? "-")}</dd></div>
+              <div><dt className="text-slate-500">용지명</dt><dd className="text-slate-800">{String(typeSpec.paper_name ?? "-")}</dd></div>
+              <div><dt className="text-slate-500">평량</dt><dd className="text-slate-800">{String(typeSpec.paper_weight ?? "-")}</dd></div>
+              <div><dt className="text-slate-500">용지색상</dt><dd className="text-slate-800">{String(typeSpec.paper_color ?? "-")}</dd></div>
+              <div><dt className="text-slate-500">인쇄 (단/양면)</dt><dd className="text-slate-800">{String(typeSpec.print_side ?? "-")}</dd></div>
+              <div><dt className="text-slate-500">인쇄 (도수)</dt><dd className="text-slate-800">{String(typeSpec.print_color ?? "-")}</dd></div>
+              <div><dt className="text-slate-500">후가공</dt><dd className="text-slate-800">{Array.isArray(typeSpec.finishing) ? typeSpec.finishing.join(", ") : "-"}</dd></div>
+              <div><dt className="text-slate-500">재단</dt><dd className="text-slate-800">{String(typeSpec.cutting ?? "-")}</dd></div>
+              <div><dt className="text-slate-500">종 수</dt><dd className="text-slate-800">{typeSpec.kinds_count != null ? String(typeSpec.kinds_count) : "-"}</dd></div>
+              <div><dt className="text-slate-500">수량 (매)</dt><dd className="text-slate-800">{typeSpec.sheets_per_kind != null ? String(typeSpec.sheets_per_kind) : "-"}</dd></div>
+              <div className="sm:col-span-2"><dt className="text-slate-500">추가 요청사항</dt><dd className="text-slate-800 whitespace-pre-wrap">{String(typeSpec.extra_request ?? "-")}</dd></div>
+              <div><dt className="text-slate-500">수령방법</dt><dd className="text-slate-800">{String(typeSpec.receive_method ?? "-")}</dd></div>
+            </dl>
+          </section>
+        ) : (
+          <section className="mb-6 rounded-xl border border-slate-200 bg-slate-50 p-5 shadow-sm">
+            <h2 className="mb-3 text-sm font-medium text-slate-500">제작사양 (스냅샷)</h2>
+            <dl className="grid grid-cols-1 gap-2 text-sm sm:grid-cols-2">
+              <div><dt className="text-slate-500">판형</dt><dd className="text-slate-800">{spec.trim_size ?? "-"}</dd></div>
+              <div><dt className="text-slate-500">면수</dt><dd className="text-slate-800">{spec.pages ?? "-"}</dd></div>
+              <div><dt className="text-slate-500">표지</dt><dd className="text-slate-800">{spec.cover_paper ?? "-"}</dd></div>
+              <div><dt className="text-slate-500">내지</dt><dd className="text-slate-800">{spec.inner_paper ?? "-"}</dd></div>
+              <div><dt className="text-slate-500">도수</dt><dd className="text-slate-800">{spec.print_color ?? "-"}</dd></div>
+              <div><dt className="text-slate-500">제본</dt><dd className="text-slate-800">{spec.binding ?? "-"}</dd></div>
+              <div><dt className="text-slate-500">후가공</dt><dd className="text-slate-800">{spec.finishing ?? "-"}</dd></div>
+              <div><dt className="text-slate-500">포장·납품</dt><dd className="text-slate-800">{spec.packaging_delivery ?? "-"}</dd></div>
+              <div className="sm:col-span-2"><dt className="text-slate-500">파일규격</dt><dd className="text-slate-800">{spec.file_rule ?? "-"}</dd></div>
+            </dl>
+          </section>
+        )}
 
         <section className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
           <h2 className="mb-3 text-sm font-medium text-slate-500">상태 변경</h2>

@@ -15,6 +15,7 @@ interface Job {
   qty: string;
   file_link: string;
   status: string;
+  order_type?: string;
 }
 
 const STATUS_LABELS: Record<string, string> = {
@@ -249,7 +250,12 @@ export function ListPageClient() {
                         </span>
                       </td>
                       <td className="px-4 py-2 text-slate-700">{job.due_date ? job.due_date.slice(0, 10) : "-"}</td>
-                      <td className="px-4 py-2 text-slate-700">{job.media_name || "-"}</td>
+                      <td className="px-4 py-2 text-slate-700">
+                        <span>{job.media_name || "-"}</span>
+                        {job.order_type === "sheet" && (
+                          <span className="ml-1.5 rounded bg-slate-200 px-1.5 py-0.5 text-xs text-slate-600">낱장</span>
+                        )}
+                      </td>
                       <td className="px-4 py-2 text-slate-700">{job.qty || "-"}</td>
                       <td className="px-4 py-2 text-slate-700">{job.vendor || "-"}</td>
                       <td className="px-4 py-2 text-slate-700">{job.requester_name || "-"}</td>

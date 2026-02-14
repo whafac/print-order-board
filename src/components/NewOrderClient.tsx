@@ -16,6 +16,18 @@ function setStoredRequester(name: string) {
   localStorage.setItem(REQUESTER_KEY, name);
 }
 
+const SHEET_FINISHING_OPTIONS = [
+  "무광코팅",
+  "유광코팅",
+  "박",
+  "형압",
+  "도무송",
+  "오시",
+  "미싱",
+  "접지",
+  "넘버링",
+] as const;
+
 interface Spec {
   media_id: string;
   media_name: string;
@@ -34,6 +46,7 @@ interface Spec {
 export function NewOrderClient() {
   const router = useRouter();
   const [specs, setSpecs] = useState<Spec[]>([]);
+  const [orderType, setOrderType] = useState<"book" | "sheet">("book");
   const [requesterName, setRequesterName] = useState("");
   const [mediaId, setMediaId] = useState("");
   const [vendor, setVendor] = useState("");
@@ -44,6 +57,22 @@ export function NewOrderClient() {
   const [spec, setSpec] = useState<Spec | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [toast, setToast] = useState<"ok" | "err" | null>(null);
+
+  // 낱장 전용
+  const [sheetMediaName, setSheetMediaName] = useState("낱장 인쇄물");
+  const [size, setSize] = useState("");
+  const [paperName, setPaperName] = useState("");
+  const [paperWeight, setPaperWeight] = useState("");
+  const [paperColor, setPaperColor] = useState("");
+  const [printSide, setPrintSide] = useState<"단면" | "양면">("양면");
+  const [printColor, setPrintColor] = useState<"먹1도" | "컬러">("컬러");
+  const [finishing, setFinishing] = useState<Record<string, boolean>>({});
+  const [finishingEtc, setFinishingEtc] = useState("");
+  const [cutting, setCutting] = useState<"필요없음" | "정재단">("필요없음");
+  const [kindsCount, setKindsCount] = useState(1);
+  const [sheetsPerKind, setSheetsPerKind] = useState(1);
+  const [extraRequest, setExtraRequest] = useState("");
+  const [receiveMethod, setReceiveMethod] = useState<"완료시 전화요망" | "완료시 방문수령">("완료시 전화요망");
 
   useEffect(() => {
     setRequesterName(getStoredRequester());
@@ -70,29 +99,63 @@ export function NewOrderClient() {
     router.refresh();
   }
 
+  function setFinishingOption(key: string, checked: boolean) {
+    setFinishing((prev) => ({ ...prev, [key]: checked }));
+  }
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!requesterName.trim() || !mediaId || !dueDate || !qty) {
+    if (!requesterName.trim() || !dueDate) {
       setToast("err");
       setTimeout(() => setToast(null), 2000);
       return;
+    }
+    if (orderType === "book") {
+      if (!mediaId || !qty.trim()) {
+        setToast("err");
+        setTimeout(() => setToast(null), 2000);
+        return;
+      }
     }
     setSubmitting(true);
     setToast(null);
     setStoredRequester(requesterName.trim());
     try {
+      const payload: Record<string, unknown> = {
+        order_type: orderType,
+        requester_name: requesterName.trim(),
+        due_date: dueDate,
+        vendor: vendor.trim() || undefined,
+        file_link: fileLink.trim() || undefined,
+        changes_note: changesNote.trim() || undefined,
+      };
+      if (orderType === "book") {
+        payload.media_id = mediaId;
+        payload.qty = qty.trim();
+      } else {
+        payload.media_name = sheetMediaName.trim() || "낱장 인쇄물";
+        payload.qty = `${kindsCount}종 ${sheetsPerKind}매`;
+        const selectedFinishing = [...SHEET_FINISHING_OPTIONS.filter((k) => finishing[k])];
+        if (finishing["기타"] && finishingEtc.trim()) selectedFinishing.push(`기타: ${finishingEtc.trim()}`);
+        payload.type_spec = {
+          size: size.trim(),
+          paper_name: paperName.trim(),
+          paper_weight: paperWeight.trim(),
+          paper_color: paperColor.trim(),
+          print_side: printSide,
+          print_color: printColor,
+          finishing: selectedFinishing,
+          cutting,
+          kinds_count: kindsCount,
+          sheets_per_kind: sheetsPerKind,
+          extra_request: extraRequest.trim(),
+          receive_method: receiveMethod,
+        };
+      }
       const res = await fetch("/api/jobs", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          requester_name: requesterName.trim(),
-          media_id: mediaId,
-          vendor: vendor.trim() || undefined,
-          due_date: dueDate,
-          qty: qty.trim(),
-          file_link: fileLink.trim() || undefined,
-          changes_note: changesNote.trim() || undefined,
-        }),
+        body: JSON.stringify(payload),
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
@@ -156,8 +219,34 @@ export function NewOrderClient() {
         <h1 className="text-lg font-semibold text-slate-800 mb-6">새 의뢰 등록</h1>
 
         <form onSubmit={handleSubmit} className="space-y-6">
+          <section className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+            <h2 className="text-sm font-medium text-slate-500 mb-3">제작 유형</h2>
+            <div className="flex gap-6">
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input
+                  type="radio"
+                  name="orderType"
+                  checked={orderType === "book"}
+                  onChange={() => setOrderType("book")}
+                  className="rounded border-slate-300"
+                />
+                <span className="text-sm text-slate-700">책자</span>
+              </label>
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input
+                  type="radio"
+                  name="orderType"
+                  checked={orderType === "sheet"}
+                  onChange={() => setOrderType("sheet")}
+                  className="rounded border-slate-300"
+                />
+                <span className="text-sm text-slate-700">낱장 인쇄물</span>
+              </label>
+            </div>
+          </section>
+
           <section className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm space-y-4">
-            <h2 className="text-sm font-medium text-slate-500">입력</h2>
+            <h2 className="text-sm font-medium text-slate-500">공통 입력</h2>
             <label className="block">
               <span className="block text-sm text-slate-600 mb-1">의뢰자 이름</span>
               <input
@@ -168,26 +257,51 @@ export function NewOrderClient() {
                 required
               />
             </label>
-            <label className="block">
-              <span className="block text-sm text-slate-600 mb-1">매체</span>
-              <select
-                value={mediaId}
-                onChange={(e) => setMediaId(e.target.value)}
-                className="input-dark w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
-                required
-              >
-                <option value="">선택</option>
-                {specs.map((s) => (
-                  <option key={s.media_id} value={s.media_id}>{s.media_name}</option>
-                ))}
-              </select>
-              {specs.length === 0 && (
-                <p className="mt-1 text-xs text-amber-600">
-                  등록된 매체가 없습니다.{" "}
-                  <Link href="/specs" className="underline">매체 사양 관리</Link>에서 먼저 매체를 추가해 주세요.
-                </p>
-              )}
-            </label>
+            {orderType === "book" ? (
+              <>
+                <label className="block">
+                  <span className="block text-sm text-slate-600 mb-1">매체</span>
+                  <select
+                    value={mediaId}
+                    onChange={(e) => setMediaId(e.target.value)}
+                    className="input-dark w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+                    required
+                  >
+                    <option value="">선택</option>
+                    {specs.map((s) => (
+                      <option key={s.media_id} value={s.media_id}>{s.media_name}</option>
+                    ))}
+                  </select>
+                  {specs.length === 0 && (
+                    <p className="mt-1 text-xs text-amber-600">
+                      등록된 매체가 없습니다.{" "}
+                      <Link href="/specs" className="underline">매체 사양 관리</Link>에서 먼저 매체를 추가해 주세요.
+                    </p>
+                  )}
+                </label>
+                <label className="block">
+                  <span className="block text-sm text-slate-600 mb-1">수량</span>
+                  <input
+                    type="text"
+                    value={qty}
+                    onChange={(e) => setQty(e.target.value)}
+                    className="input-dark w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+                    required
+                  />
+                </label>
+              </>
+            ) : (
+              <label className="block">
+                <span className="block text-sm text-slate-600 mb-1">매체명</span>
+                <input
+                  type="text"
+                  value={sheetMediaName}
+                  onChange={(e) => setSheetMediaName(e.target.value)}
+                  placeholder="낱장 인쇄물"
+                  className="input-dark w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+                />
+              </label>
+            )}
             <label className="block">
               <span className="block text-sm text-slate-600 mb-1">출력실</span>
               <input
@@ -204,16 +318,6 @@ export function NewOrderClient() {
                 type="date"
                 value={dueDate}
                 onChange={(e) => setDueDate(e.target.value)}
-                className="input-dark w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
-                required
-              />
-            </label>
-            <label className="block">
-              <span className="block text-sm text-slate-600 mb-1">수량</span>
-              <input
-                type="text"
-                value={qty}
-                onChange={(e) => setQty(e.target.value)}
                 className="input-dark w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
                 required
               />
@@ -239,7 +343,165 @@ export function NewOrderClient() {
             </label>
           </section>
 
-          {spec && (
+          {orderType === "sheet" && (
+            <section className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm space-y-4">
+              <h2 className="text-sm font-medium text-slate-500">낱장 인쇄 사양</h2>
+              <label className="block">
+                <span className="block text-sm text-slate-600 mb-1">1. 사이즈</span>
+                <input
+                  type="text"
+                  value={size}
+                  onChange={(e) => setSize(e.target.value)}
+                  placeholder="예: 210×297"
+                  className="input-dark w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+                />
+              </label>
+              <div className="grid gap-3 sm:grid-cols-3">
+                <label className="block">
+                  <span className="block text-sm text-slate-600 mb-1">2. 용지명</span>
+                  <input
+                    type="text"
+                    value={paperName}
+                    onChange={(e) => setPaperName(e.target.value)}
+                    className="input-dark w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+                  />
+                </label>
+                <label className="block">
+                  <span className="block text-sm text-slate-600 mb-1">평량</span>
+                  <input
+                    type="text"
+                    value={paperWeight}
+                    onChange={(e) => setPaperWeight(e.target.value)}
+                    placeholder="예: 80g"
+                    className="input-dark w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+                  />
+                </label>
+                <label className="block">
+                  <span className="block text-sm text-slate-600 mb-1">용지색상</span>
+                  <input
+                    type="text"
+                    value={paperColor}
+                    onChange={(e) => setPaperColor(e.target.value)}
+                    placeholder="예: 백상지"
+                    className="input-dark w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+                  />
+                </label>
+              </div>
+              <div className="grid gap-3 sm:grid-cols-2">
+                <label className="block">
+                  <span className="block text-sm text-slate-600 mb-1">3. 인쇄 (단면/양면)</span>
+                  <select
+                    value={printSide}
+                    onChange={(e) => setPrintSide(e.target.value as "단면" | "양면")}
+                    className="input-dark w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+                  >
+                    <option value="단면">단면</option>
+                    <option value="양면">양면</option>
+                  </select>
+                </label>
+                <label className="block">
+                  <span className="block text-sm text-slate-600 mb-1">인쇄 (먹1도/컬러)</span>
+                  <select
+                    value={printColor}
+                    onChange={(e) => setPrintColor(e.target.value as "먹1도" | "컬러")}
+                    className="input-dark w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+                  >
+                    <option value="먹1도">먹1도</option>
+                    <option value="컬러">컬러</option>
+                  </select>
+                </label>
+              </div>
+              <div className="block">
+                <span className="block text-sm text-slate-600 mb-2">4. 후가공</span>
+                <div className="flex flex-wrap gap-x-6 gap-y-2">
+                  {SHEET_FINISHING_OPTIONS.map((opt) => (
+                    <label key={opt} className="flex items-center gap-2 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={!!finishing[opt]}
+                        onChange={(e) => setFinishingOption(opt, e.target.checked)}
+                        className="rounded border-slate-300"
+                      />
+                      <span className="text-sm text-slate-700">{opt}</span>
+                    </label>
+                  ))}
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={!!finishing["기타"]}
+                      onChange={(e) => setFinishingOption("기타", e.target.checked)}
+                      className="rounded border-slate-300"
+                    />
+                    <span className="text-sm text-slate-700">기타</span>
+                    {finishing["기타"] && (
+                      <input
+                        type="text"
+                        value={finishingEtc}
+                        onChange={(e) => setFinishingEtc(e.target.value)}
+                        placeholder="직접 입력"
+                        className="input-dark rounded border border-slate-300 px-2 py-1 text-sm w-32"
+                      />
+                    )}
+                  </label>
+                </div>
+              </div>
+              <label className="block">
+                <span className="block text-sm text-slate-600 mb-1">5. 재단</span>
+                <select
+                  value={cutting}
+                  onChange={(e) => setCutting(e.target.value as "필요없음" | "정재단")}
+                  className="input-dark w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+                >
+                  <option value="필요없음">필요없음</option>
+                  <option value="정재단">정재단</option>
+                </select>
+              </label>
+              <div className="grid gap-3 sm:grid-cols-2">
+                <label className="block">
+                  <span className="block text-sm text-slate-600 mb-1">6. 종 수</span>
+                  <input
+                    type="number"
+                    min={1}
+                    value={kindsCount}
+                    onChange={(e) => setKindsCount(Math.max(1, parseInt(e.target.value, 10) || 1))}
+                    className="input-dark w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+                  />
+                </label>
+                <label className="block">
+                  <span className="block text-sm text-slate-600 mb-1">수량 (매)</span>
+                  <input
+                    type="number"
+                    min={1}
+                    value={sheetsPerKind}
+                    onChange={(e) => setSheetsPerKind(Math.max(1, parseInt(e.target.value, 10) || 1))}
+                    className="input-dark w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+                  />
+                </label>
+              </div>
+              <label className="block">
+                <span className="block text-sm text-slate-600 mb-1">7. 추가 요청사항</span>
+                <textarea
+                  value={extraRequest}
+                  onChange={(e) => setExtraRequest(e.target.value)}
+                  rows={2}
+                  className="input-dark w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+                />
+              </label>
+              <label className="block">
+                <span className="block text-sm text-slate-600 mb-1">8. 수령방법</span>
+                <select
+                  value={receiveMethod}
+                  onChange={(e) => setReceiveMethod(e.target.value as "완료시 전화요망" | "완료시 방문수령")}
+                  className="input-dark w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+                >
+                  <option value="완료시 전화요망">완료시 전화요망</option>
+                  <option value="완료시 방문수령">완료시 방문수령</option>
+                </select>
+              </label>
+            </section>
+          )}
+
+          {orderType === "book" && spec && (
             <section className="rounded-xl border border-slate-200 bg-slate-50 p-5 shadow-sm">
               <h2 className="text-sm font-medium text-slate-500 mb-3">자동 사양 (읽기전용)</h2>
               <dl className="grid grid-cols-1 gap-2 text-sm sm:grid-cols-2">
