@@ -109,7 +109,21 @@ export function NewOrderClient() {
         return;
       }
       setToast("ok");
-      router.push(`/jobs/${data.job_id}`);
+      // 시트 반영 지연으로 404 방지: 상세 API가 성공할 때까지 대기 후 이동
+      const jobId = data.job_id;
+      const maxAttempts = 20;
+      const intervalMs = 500;
+      for (let attempt = 0; attempt < maxAttempts; attempt++) {
+        const r = await fetch(`/api/jobs/${jobId}`);
+        if (r.ok) {
+          router.push(`/jobs/${jobId}`);
+          router.refresh();
+          return;
+        }
+        await new Promise((resolve) => setTimeout(resolve, intervalMs));
+      }
+      // 타임아웃 후에도 이동 (목록에서 확인 가능)
+      router.push(`/jobs/${jobId}`);
       router.refresh();
     } catch {
       setToast("err");
