@@ -216,11 +216,16 @@ export function NewOrderClient() {
     const missing: string[] = [];
     if (!requesterName.trim()) missing.push("의뢰자 이름");
     if (!dueDate) missing.push("납기일");
+    if (!vendor.trim()) missing.push("출력실");
     if (orderType === "book") {
       if (!mediaId) missing.push("매체");
       if (!qty.trim()) missing.push("수량");
     } else {
       if (!sheetMediaName.trim()) missing.push("매체명");
+      if (!size.trim()) missing.push("낱장 사양 1. 사이즈");
+      if (!paperName.trim()) missing.push("낱장 사양 2. 용지명");
+      if (!paperWeight.trim()) missing.push("낱장 사양 2. 평량");
+      if (!paperColor.trim()) missing.push("낱장 사양 2. 용지색상");
     }
     return missing;
   }
@@ -229,8 +234,7 @@ export function NewOrderClient() {
     e.preventDefault();
     const missing = getMissingRequiredFields();
     if (missing.length > 0) {
-      const message =
-        "입력 내용을 확인해 주세요.\n\n필수 항목: " + missing.join(", ") + "\n\n(출력실, 변경사항은 선택 입력입니다.)";
+      const message = "입력 내용을 확인해 주세요.\n\n필수 항목: " + missing.join(", ");
       window.alert(message);
       setToast("err");
       setTimeout(() => setToast(null), 2000);
@@ -246,7 +250,7 @@ export function NewOrderClient() {
         due_date: dueDate,
         vendor: vendor.trim() || undefined,
         file_link: fileLink.trim() || undefined,
-        changes_note: changesNote.trim() || undefined,
+        changes_note: changesNote.trim() || "없음",
       };
       if (orderType === "book") {
         payload.media_id = mediaId;
@@ -454,7 +458,7 @@ export function NewOrderClient() {
               />
             </label>
             <label className="block">
-              <span className="block text-sm text-slate-600 mb-1">변경사항</span>
+              <span className="block text-sm text-slate-600 mb-1">변경 및 요청 사항</span>
               <textarea
                 value={changesNote}
                 onChange={(e) => setChangesNote(e.target.value)}
