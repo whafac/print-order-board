@@ -19,6 +19,7 @@ function setStoredRequester(name: string) {
 const SHEET_FINISHING_OPTIONS = [
   "무광코팅",
   "유광코팅",
+  "에폭시",
   "박",
   "형압",
   "도무송",
@@ -69,8 +70,8 @@ export function NewOrderClient() {
   const [finishing, setFinishing] = useState<Record<string, boolean>>({});
   const [finishingEtc, setFinishingEtc] = useState("");
   const [cutting, setCutting] = useState<"필요없음" | "정재단">("필요없음");
-  const [kindsCount, setKindsCount] = useState(1);
-  const [sheetsPerKind, setSheetsPerKind] = useState(1);
+  const [kindsCountStr, setKindsCountStr] = useState("1");
+  const [sheetsPerKindStr, setSheetsPerKindStr] = useState("1");
   const [extraRequest, setExtraRequest] = useState("");
   const [receiveMethod, setReceiveMethod] = useState<"완료시 전화요망" | "완료시 방문수령">("완료시 전화요망");
 
@@ -133,6 +134,8 @@ export function NewOrderClient() {
         payload.media_id = mediaId;
         payload.qty = qty.trim();
       } else {
+        const kindsCount = Math.max(1, parseInt(kindsCountStr, 10) || 1);
+        const sheetsPerKind = Math.max(1, parseInt(sheetsPerKindStr, 10) || 1);
         payload.media_name = sheetMediaName.trim() || "낱장 인쇄물";
         payload.qty = `${kindsCount}종 ${sheetsPerKind}매`;
         const selectedFinishing: string[] = [...SHEET_FINISHING_OPTIONS.filter((k) => finishing[k])];
@@ -462,8 +465,9 @@ export function NewOrderClient() {
                   <input
                     type="number"
                     min={1}
-                    value={kindsCount}
-                    onChange={(e) => setKindsCount(Math.max(1, parseInt(e.target.value, 10) || 1))}
+                    inputMode="numeric"
+                    value={kindsCountStr}
+                    onChange={(e) => setKindsCountStr(e.target.value)}
                     className="input-dark w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
                   />
                 </label>
@@ -472,8 +476,9 @@ export function NewOrderClient() {
                   <input
                     type="number"
                     min={1}
-                    value={sheetsPerKind}
-                    onChange={(e) => setSheetsPerKind(Math.max(1, parseInt(e.target.value, 10) || 1))}
+                    inputMode="numeric"
+                    value={sheetsPerKindStr}
+                    onChange={(e) => setSheetsPerKindStr(e.target.value)}
                     className="input-dark w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
                   />
                 </label>
