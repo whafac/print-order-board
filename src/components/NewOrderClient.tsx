@@ -273,7 +273,7 @@ export function NewOrderClient() {
           cutting,
           kinds_count: kindsCount,
           sheets_per_kind: sheetsPerKind,
-          extra_request: extraRequest.trim(),
+          extra_request: extraRequest.trim() || "없음",
           receive_method: receiveMethod,
         };
       }
