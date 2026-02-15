@@ -212,19 +212,29 @@ export function NewOrderClient() {
     );
   }
 
+  function getMissingRequiredFields(): string[] {
+    const missing: string[] = [];
+    if (!requesterName.trim()) missing.push("의뢰자 이름");
+    if (!dueDate) missing.push("납기일");
+    if (orderType === "book") {
+      if (!mediaId) missing.push("매체");
+      if (!qty.trim()) missing.push("수량");
+    } else {
+      if (!sheetMediaName.trim()) missing.push("매체명");
+    }
+    return missing;
+  }
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!requesterName.trim() || !dueDate) {
+    const missing = getMissingRequiredFields();
+    if (missing.length > 0) {
+      const message =
+        "입력 내용을 확인해 주세요.\n\n필수 항목: " + missing.join(", ") + "\n\n(출력실, 변경사항은 선택 입력입니다.)";
+      window.alert(message);
       setToast("err");
       setTimeout(() => setToast(null), 2000);
       return;
-    }
-    if (orderType === "book") {
-      if (!mediaId || !qty.trim()) {
-        setToast("err");
-        setTimeout(() => setToast(null), 2000);
-        return;
-      }
     }
     setSubmitting(true);
     setToast(null);
