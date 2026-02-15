@@ -58,7 +58,7 @@ export function NewOrderClient() {
   const [spec, setSpec] = useState<Spec | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [toast, setToast] = useState<"ok" | "err" | null>(null);
-  const [showPreview, setShowPreview] = useState(false);
+  const previewWindowRef = useRef<Window | null>(null);
 
   // 낱장 전용
   const [sheetMediaName, setSheetMediaName] = useState("낱장 인쇄물");
@@ -248,7 +248,139 @@ export function NewOrderClient() {
       setTimeout(() => setToast(null), 2000);
       return;
     }
-    setShowPreview(true);
+    openPreviewWindow();
+  }
+
+  function esc(s: string): string {
+    return String(s)
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;");
+  }
+
+  function openPreviewWindow() {
+    if (previewWindowRef.current && !previewWindowRef.current.closed) {
+      previewWindowRef.current.focus();
+      return;
+    }
+    (window as unknown as { __printOrderConfirm?: () => void }).__printOrderConfirm = () => {
+      previewWindowRef.current?.close();
+      previewWindowRef.current = null;
+      doSubmit();
+    };
+    const orderTypeLabel = orderType === "book" ? "책자" : "낱장 인쇄물";
+    const mediaDisplay = orderType === "book" ? ((spec?.media_name ?? mediaId) || "-") : (sheetMediaName.trim() || "낱장 인쇄물");
+    const qtyDisplay = orderType === "book" ? (qty.trim() || "-") : `${kindsCountStr}종 ${sheetsPerKindStr}매`;
+    const sheetBlock =
+      orderType === "sheet"
+        ? `
+    <div class="block">
+      <h3 class="sec">낱장 인쇄 사양</h3>
+      <dl class="grid">
+        <div><dt>사이즈</dt><dd>${esc(size.trim() || "-")}</dd></div>
+        <div><dt>용지명</dt><dd>${esc(paperName.trim() || "-")}</dd></div>
+        <div><dt>평량</dt><dd>${esc(paperWeight.trim() || "-")}</dd></div>
+        <div><dt>용지색상</dt><dd>${esc(paperColor.trim() || "-")}</dd></div>
+        <div><dt>인쇄 (단/양면)</dt><dd>${esc(printSide)}</dd></div>
+        <div><dt>인쇄 (도수)</dt><dd>${esc(printColor)}</dd></div>
+        <div><dt>후가공</dt><dd>${esc(finishingLabel)}</dd></div>
+        <div><dt>재단</dt><dd>${esc(cutting)}</dd></div>
+        <div><dt>종 수</dt><dd>${esc(kindsCountStr)}</dd></div>
+        <div><dt>수량 (매)</dt><dd>${esc(sheetsPerKindStr)}</dd></div>
+        <div class="full"><dt>추가 요청사항</dt><dd>${esc(extraRequest.trim() || "없음")}</dd></div>
+        <div><dt>수령방법</dt><dd>${esc(receiveMethod)}</dd></div>
+      </dl>
+    </div>`
+        : "";
+    const bookSpecBlock =
+      orderType === "book" && spec
+        ? `
+    <div class="block spec">
+      <h3 class="sec">제작 사양 (매체)</h3>
+      <dl class="grid">
+        <div><dt>판형</dt><dd>${esc(spec.trim_size || "-")}</dd></div>
+        <div><dt>면수</dt><dd>${esc(spec.pages || "-")}</dd></div>
+        <div><dt>표지</dt><dd>${esc(spec.cover_paper || "-")}</dd></div>
+        <div><dt>내지</dt><dd>${esc(spec.inner_paper || "-")}</dd></div>
+        <div><dt>도수</dt><dd>${esc(spec.print_color || "-")}</dd></div>
+        <div><dt>제본</dt><dd>${esc(spec.binding || "-")}</dd></div>
+        <div><dt>후가공</dt><dd>${esc(spec.finishing || "-")}</dd></div>
+        <div><dt>포장·납품</dt><dd>${esc(spec.packaging_delivery || "-")}</dd></div>
+      </dl>
+    </div>`
+        : "";
+    const html = `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>의뢰 내용 미리보기</title>
+  <style>
+    * { box-sizing: border-box; }
+    body { font-family: system-ui, sans-serif; margin: 0; padding: 24px; background: #f1f5f9; color: #1e293b; }
+    .wrap { max-width: 560px; margin: 0 auto; }
+    h1 { font-size: 1.25rem; font-weight: 600; margin: 0 0 16px; color: #0f172a; }
+    .badge { display: inline-block; background: #e2e8f0; color: #475569; font-size: 0.75rem; padding: 6px 12px; border-radius: 8px; margin-bottom: 16px; }
+    .block { background: #fff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 20px; margin-bottom: 16px; box-shadow: 0 1px 3px rgba(0,0,0,.06); }
+    .block.spec { background: #f8fafc; }
+    .sec { font-size: 0.875rem; color: #64748b; margin: 0 0 12px; font-weight: 500; }
+    .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px 16px; font-size: 0.875rem; }
+    .grid .full { grid-column: 1 / -1; }
+    .grid dt { color: #64748b; margin: 0; }
+    .grid dd { margin: 0; color: #1e293b; word-break: break-all; white-space: pre-wrap; }
+    .actions { display: flex; gap: 12px; margin-top: 20px; }
+    .btn { padding: 10px 24px; font-size: 0.875rem; border-radius: 8px; cursor: pointer; border: none; font-weight: 500; }
+    .btn-primary { background: #1e293b; color: #fff; }
+    .btn-primary:hover { background: #334155; }
+    .btn-secondary { background: #fff; color: #475569; border: 1px solid #cbd5e1; }
+    .btn-secondary:hover { background: #f1f5f9; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="badge">미리보기 창</div>
+    <h1>의뢰 내용 미리보기</h1>
+    <p style="font-size:0.875rem;color:#64748b;margin:0 0 16px;">아래 내용을 확인한 뒤 확인 시 제출됩니다.</p>
+    <div class="block">
+      <h3 class="sec">입력 내용</h3>
+      <dl class="grid">
+        <div><dt>제작 유형</dt><dd>${esc(orderTypeLabel)}</dd></div>
+        <div><dt>의뢰자</dt><dd>${esc(requesterName.trim() || "-")}</dd></div>
+        <div><dt>${orderType === "book" ? "매체" : "매체명"}</dt><dd>${esc(mediaDisplay)}</dd></div>
+        <div><dt>출력실</dt><dd>${esc(vendor.trim() || "-")}</dd></div>
+        <div><dt>납기일</dt><dd>${esc(dueDate || "-")}</dd></div>
+        <div><dt>수량</dt><dd>${esc(qtyDisplay)}</dd></div>
+        <div class="full"><dt>파일 링크</dt><dd>${esc(fileLink.trim() || "-")}</dd></div>
+        <div class="full"><dt>변경 및 요청 사항</dt><dd>${esc(changesNote.trim() || "없음")}</dd></div>
+      </dl>
+    </div>
+    ${sheetBlock}
+    ${bookSpecBlock}
+    <div class="actions">
+      <button type="button" class="btn btn-primary" id="btn-confirm">확인 (제출)</button>
+      <button type="button" class="btn btn-secondary" id="btn-cancel">취소</button>
+    </div>
+  </div>
+  <script>
+    document.getElementById("btn-confirm").onclick = function() {
+      if (window.opener && typeof window.opener.__printOrderConfirm === "function") {
+        window.opener.__printOrderConfirm();
+      }
+      window.close();
+    };
+    document.getElementById("btn-cancel").onclick = function() { window.close(); };
+  </script>
+</body>
+</html>`;
+    const win = window.open("", "_blank", "width=620,height=700,scrollbars=yes,resizable=yes");
+    if (win) {
+      win.document.write(html);
+      win.document.close();
+      previewWindowRef.current = win;
+    } else {
+      window.alert("팝업이 차단되었을 수 있습니다. 브라우저에서 팝업을 허용해 주세요.");
+    }
   }
 
   async function doSubmit() {
@@ -365,81 +497,6 @@ export function NewOrderClient() {
       </header>
 
       <div className="mx-auto max-w-2xl px-4 py-6">
-        {showPreview ? (
-          <section className="space-y-6">
-            <h1 className="text-lg font-semibold text-slate-800">의뢰 내용 확인</h1>
-            <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm space-y-4">
-              <h2 className="text-sm font-medium text-slate-500">입력 내용</h2>
-              <dl className="grid grid-cols-1 gap-2 text-sm sm:grid-cols-2">
-                <div><dt className="text-slate-500">제작 유형</dt><dd className="text-slate-800">{orderType === "book" ? "책자" : "낱장 인쇄물"}</dd></div>
-                <div><dt className="text-slate-500">의뢰자</dt><dd className="text-slate-800">{requesterName.trim() || "-"}</dd></div>
-                {orderType === "book" ? (
-                  <div><dt className="text-slate-500">매체</dt><dd className="text-slate-800">{(spec?.media_name ?? mediaId) || "-"}</dd></div>
-                ) : (
-                  <div><dt className="text-slate-500">매체명</dt><dd className="text-slate-800">{sheetMediaName.trim() || "낱장 인쇄물"}</dd></div>
-                )}
-                <div><dt className="text-slate-500">출력실</dt><dd className="text-slate-800">{vendor.trim() || "-"}</dd></div>
-                <div><dt className="text-slate-500">납기일</dt><dd className="text-slate-800">{dueDate || "-"}</dd></div>
-                <div><dt className="text-slate-500">수량</dt><dd className="text-slate-800">{orderType === "book" ? (qty.trim() || "-") : `${kindsCountStr}종 ${sheetsPerKindStr}매`}</dd></div>
-                <div className="sm:col-span-2"><dt className="text-slate-500">파일 링크</dt><dd className="text-slate-800 break-all">{fileLink.trim() || "-"}</dd></div>
-                <div className="sm:col-span-2"><dt className="text-slate-500">변경 및 요청 사항</dt><dd className="text-slate-800 whitespace-pre-wrap">{changesNote.trim() || "없음"}</dd></div>
-              </dl>
-            </div>
-            {orderType === "sheet" && (
-              <div className="rounded-xl border border-slate-200 bg-slate-50 p-5 shadow-sm">
-                <h2 className="text-sm font-medium text-slate-500 mb-3">낱장 인쇄 사양</h2>
-                <dl className="grid grid-cols-1 gap-2 text-sm sm:grid-cols-2">
-                  <div><dt className="text-slate-500">사이즈</dt><dd className="text-slate-800">{size.trim() || "-"}</dd></div>
-                  <div><dt className="text-slate-500">용지명</dt><dd className="text-slate-800">{paperName.trim() || "-"}</dd></div>
-                  <div><dt className="text-slate-500">평량</dt><dd className="text-slate-800">{paperWeight.trim() || "-"}</dd></div>
-                  <div><dt className="text-slate-500">용지색상</dt><dd className="text-slate-800">{paperColor.trim() || "-"}</dd></div>
-                  <div><dt className="text-slate-500">인쇄 (단/양면)</dt><dd className="text-slate-800">{printSide}</dd></div>
-                  <div><dt className="text-slate-500">인쇄 (도수)</dt><dd className="text-slate-800">{printColor}</dd></div>
-                  <div><dt className="text-slate-500">후가공</dt><dd className="text-slate-800">{finishingLabel}</dd></div>
-                  <div><dt className="text-slate-500">재단</dt><dd className="text-slate-800">{cutting}</dd></div>
-                  <div><dt className="text-slate-500">종 수</dt><dd className="text-slate-800">{kindsCountStr}</dd></div>
-                  <div><dt className="text-slate-500">수량 (매)</dt><dd className="text-slate-800">{sheetsPerKindStr}</dd></div>
-                  <div className="sm:col-span-2"><dt className="text-slate-500">추가 요청사항</dt><dd className="text-slate-800 whitespace-pre-wrap">{extraRequest.trim() || "없음"}</dd></div>
-                  <div><dt className="text-slate-500">수령방법</dt><dd className="text-slate-800">{receiveMethod}</dd></div>
-                </dl>
-              </div>
-            )}
-            {orderType === "book" && spec && (
-              <div className="rounded-xl border border-slate-200 bg-slate-50 p-5 shadow-sm">
-                <h2 className="text-sm font-medium text-slate-500 mb-3">제작 사양 (매체)</h2>
-                <dl className="grid grid-cols-1 gap-2 text-sm sm:grid-cols-2">
-                  <div><dt className="text-slate-500">판형</dt><dd className="text-slate-800">{spec.trim_size || "-"}</dd></div>
-                  <div><dt className="text-slate-500">면수</dt><dd className="text-slate-800">{spec.pages || "-"}</dd></div>
-                  <div><dt className="text-slate-500">표지</dt><dd className="text-slate-800">{spec.cover_paper || "-"}</dd></div>
-                  <div><dt className="text-slate-500">내지</dt><dd className="text-slate-800">{spec.inner_paper || "-"}</dd></div>
-                  <div><dt className="text-slate-500">도수</dt><dd className="text-slate-800">{spec.print_color || "-"}</dd></div>
-                  <div><dt className="text-slate-500">제본</dt><dd className="text-slate-800">{spec.binding || "-"}</dd></div>
-                  <div><dt className="text-slate-500">후가공</dt><dd className="text-slate-800">{spec.finishing || "-"}</dd></div>
-                  <div><dt className="text-slate-500">포장·납품</dt><dd className="text-slate-800">{spec.packaging_delivery || "-"}</dd></div>
-                </dl>
-              </div>
-            )}
-            <div className="flex gap-3">
-              <button
-                type="button"
-                onClick={() => doSubmit()}
-                disabled={submitting}
-                className="rounded-lg bg-slate-800 px-6 py-2.5 text-sm font-medium text-white hover:bg-slate-700 disabled:opacity-50"
-              >
-                {submitting ? "제출 중…" : "확인 (제출)"}
-              </button>
-              <button
-                type="button"
-                onClick={() => setShowPreview(false)}
-                disabled={submitting}
-                className="rounded-lg border border-slate-300 px-6 py-2.5 text-sm text-slate-600 hover:bg-slate-100 disabled:opacity-50"
-              >
-                취소
-              </button>
-            </div>
-          </section>
-        ) : (
-          <>
         <h1 className="text-lg font-semibold text-slate-800 mb-6">새 의뢰 등록</h1>
 
         <form onSubmit={handleSubmit} className="space-y-6">
@@ -785,8 +842,6 @@ export function NewOrderClient() {
             </Link>
           </div>
         </form>
-          </>
-        )}
 
         {toast === "err" && (
           <div className="fixed bottom-4 left-1/2 -translate-x-1/2 rounded-lg bg-red-600 px-4 py-2 text-sm text-white shadow">
