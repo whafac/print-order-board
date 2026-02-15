@@ -58,6 +58,7 @@ export function NewOrderClient() {
   const [spec, setSpec] = useState<Spec | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [toast, setToast] = useState<"ok" | "err" | null>(null);
+  const [showPreview, setShowPreview] = useState(false);
 
   // 낱장 전용
   const [sheetMediaName, setSheetMediaName] = useState("낱장 인쇄물");
@@ -237,7 +238,7 @@ export function NewOrderClient() {
     return missing;
   }
 
-  async function handleSubmit(e: React.FormEvent) {
+  function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     const missing = getMissingRequiredFields();
     if (missing.length > 0) {
@@ -247,6 +248,10 @@ export function NewOrderClient() {
       setTimeout(() => setToast(null), 2000);
       return;
     }
+    setShowPreview(true);
+  }
+
+  async function doSubmit() {
     setSubmitting(true);
     setToast(null);
     setStoredRequester(requesterName.trim());
@@ -309,7 +314,6 @@ export function NewOrderClient() {
         return;
       }
       setToast("ok");
-      // 시트 반영 지연으로 404 방지: 상세 API가 성공할 때까지 대기 후 이동
       const jobId = data.job_id;
       const maxAttempts = 24;
       const intervalMs = 500;
@@ -332,6 +336,14 @@ export function NewOrderClient() {
     }
   }
 
+  const finishingLabel = (() => {
+    const hasOther = SHEET_FINISHING_OPTIONS.some((k) => finishing[k]) || (finishing["기타"] && finishingEtc.trim());
+    if (finishing["없음"] || !hasOther) return "없음";
+    const list: string[] = [...SHEET_FINISHING_OPTIONS.filter((k) => finishing[k])];
+    if (finishing["기타"] && finishingEtc.trim()) list.push(`기타: ${finishingEtc.trim()}`);
+    return list.join(", ");
+  })();
+
   return (
     <>
       <header className="sticky top-0 z-10 border-b border-slate-200 bg-white/95 backdrop-blur">
@@ -353,6 +365,81 @@ export function NewOrderClient() {
       </header>
 
       <div className="mx-auto max-w-2xl px-4 py-6">
+        {showPreview ? (
+          <section className="space-y-6">
+            <h1 className="text-lg font-semibold text-slate-800">의뢰 내용 확인</h1>
+            <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm space-y-4">
+              <h2 className="text-sm font-medium text-slate-500">입력 내용</h2>
+              <dl className="grid grid-cols-1 gap-2 text-sm sm:grid-cols-2">
+                <div><dt className="text-slate-500">제작 유형</dt><dd className="text-slate-800">{orderType === "book" ? "책자" : "낱장 인쇄물"}</dd></div>
+                <div><dt className="text-slate-500">의뢰자</dt><dd className="text-slate-800">{requesterName.trim() || "-"}</dd></div>
+                {orderType === "book" ? (
+                  <div><dt className="text-slate-500">매체</dt><dd className="text-slate-800">{(spec?.media_name ?? mediaId) || "-"}</dd></div>
+                ) : (
+                  <div><dt className="text-slate-500">매체명</dt><dd className="text-slate-800">{sheetMediaName.trim() || "낱장 인쇄물"}</dd></div>
+                )}
+                <div><dt className="text-slate-500">출력실</dt><dd className="text-slate-800">{vendor.trim() || "-"}</dd></div>
+                <div><dt className="text-slate-500">납기일</dt><dd className="text-slate-800">{dueDate || "-"}</dd></div>
+                <div><dt className="text-slate-500">수량</dt><dd className="text-slate-800">{orderType === "book" ? (qty.trim() || "-") : `${kindsCountStr}종 ${sheetsPerKindStr}매`}</dd></div>
+                <div className="sm:col-span-2"><dt className="text-slate-500">파일 링크</dt><dd className="text-slate-800 break-all">{fileLink.trim() || "-"}</dd></div>
+                <div className="sm:col-span-2"><dt className="text-slate-500">변경 및 요청 사항</dt><dd className="text-slate-800 whitespace-pre-wrap">{changesNote.trim() || "없음"}</dd></div>
+              </dl>
+            </div>
+            {orderType === "sheet" && (
+              <div className="rounded-xl border border-slate-200 bg-slate-50 p-5 shadow-sm">
+                <h2 className="text-sm font-medium text-slate-500 mb-3">낱장 인쇄 사양</h2>
+                <dl className="grid grid-cols-1 gap-2 text-sm sm:grid-cols-2">
+                  <div><dt className="text-slate-500">사이즈</dt><dd className="text-slate-800">{size.trim() || "-"}</dd></div>
+                  <div><dt className="text-slate-500">용지명</dt><dd className="text-slate-800">{paperName.trim() || "-"}</dd></div>
+                  <div><dt className="text-slate-500">평량</dt><dd className="text-slate-800">{paperWeight.trim() || "-"}</dd></div>
+                  <div><dt className="text-slate-500">용지색상</dt><dd className="text-slate-800">{paperColor.trim() || "-"}</dd></div>
+                  <div><dt className="text-slate-500">인쇄 (단/양면)</dt><dd className="text-slate-800">{printSide}</dd></div>
+                  <div><dt className="text-slate-500">인쇄 (도수)</dt><dd className="text-slate-800">{printColor}</dd></div>
+                  <div><dt className="text-slate-500">후가공</dt><dd className="text-slate-800">{finishingLabel}</dd></div>
+                  <div><dt className="text-slate-500">재단</dt><dd className="text-slate-800">{cutting}</dd></div>
+                  <div><dt className="text-slate-500">종 수</dt><dd className="text-slate-800">{kindsCountStr}</dd></div>
+                  <div><dt className="text-slate-500">수량 (매)</dt><dd className="text-slate-800">{sheetsPerKindStr}</dd></div>
+                  <div className="sm:col-span-2"><dt className="text-slate-500">추가 요청사항</dt><dd className="text-slate-800 whitespace-pre-wrap">{extraRequest.trim() || "없음"}</dd></div>
+                  <div><dt className="text-slate-500">수령방법</dt><dd className="text-slate-800">{receiveMethod}</dd></div>
+                </dl>
+              </div>
+            )}
+            {orderType === "book" && spec && (
+              <div className="rounded-xl border border-slate-200 bg-slate-50 p-5 shadow-sm">
+                <h2 className="text-sm font-medium text-slate-500 mb-3">제작 사양 (매체)</h2>
+                <dl className="grid grid-cols-1 gap-2 text-sm sm:grid-cols-2">
+                  <div><dt className="text-slate-500">판형</dt><dd className="text-slate-800">{spec.trim_size || "-"}</dd></div>
+                  <div><dt className="text-slate-500">면수</dt><dd className="text-slate-800">{spec.pages || "-"}</dd></div>
+                  <div><dt className="text-slate-500">표지</dt><dd className="text-slate-800">{spec.cover_paper || "-"}</dd></div>
+                  <div><dt className="text-slate-500">내지</dt><dd className="text-slate-800">{spec.inner_paper || "-"}</dd></div>
+                  <div><dt className="text-slate-500">도수</dt><dd className="text-slate-800">{spec.print_color || "-"}</dd></div>
+                  <div><dt className="text-slate-500">제본</dt><dd className="text-slate-800">{spec.binding || "-"}</dd></div>
+                  <div><dt className="text-slate-500">후가공</dt><dd className="text-slate-800">{spec.finishing || "-"}</dd></div>
+                  <div><dt className="text-slate-500">포장·납품</dt><dd className="text-slate-800">{spec.packaging_delivery || "-"}</dd></div>
+                </dl>
+              </div>
+            )}
+            <div className="flex gap-3">
+              <button
+                type="button"
+                onClick={() => doSubmit()}
+                disabled={submitting}
+                className="rounded-lg bg-slate-800 px-6 py-2.5 text-sm font-medium text-white hover:bg-slate-700 disabled:opacity-50"
+              >
+                {submitting ? "제출 중…" : "확인 (제출)"}
+              </button>
+              <button
+                type="button"
+                onClick={() => setShowPreview(false)}
+                disabled={submitting}
+                className="rounded-lg border border-slate-300 px-6 py-2.5 text-sm text-slate-600 hover:bg-slate-100 disabled:opacity-50"
+              >
+                취소
+              </button>
+            </div>
+          </section>
+        ) : (
+          <>
         <h1 className="text-lg font-semibold text-slate-800 mb-6">새 의뢰 등록</h1>
 
         <form onSubmit={handleSubmit} className="space-y-6">
@@ -698,6 +785,8 @@ export function NewOrderClient() {
             </Link>
           </div>
         </form>
+          </>
+        )}
 
         {toast === "err" && (
           <div className="fixed bottom-4 left-1/2 -translate-x-1/2 rounded-lg bg-red-600 px-4 py-2 text-sm text-white shadow">
