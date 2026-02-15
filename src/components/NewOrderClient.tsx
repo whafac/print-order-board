@@ -81,7 +81,10 @@ export function NewOrderClient() {
     paper_color: string[];
   }>({ size: [], paper_name: [], paper_weight: [], paper_color: [] });
   const [activeSuggestions, setActiveSuggestions] = useState<"size" | "paper_name" | "paper_weight" | "paper_color" | null>(null);
-  const suggestionBlurTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const sizeWrapperRef = useRef<HTMLDivElement>(null);
+  const paperNameWrapperRef = useRef<HTMLDivElement>(null);
+  const paperWeightWrapperRef = useRef<HTMLDivElement>(null);
+  const paperColorWrapperRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     setRequesterName(getStoredRequester());
@@ -125,6 +128,26 @@ export function NewOrderClient() {
   }, [orderType]);
 
   useEffect(() => {
+    if (!activeSuggestions) return;
+    const ref =
+      activeSuggestions === "size"
+        ? sizeWrapperRef
+        : activeSuggestions === "paper_name"
+          ? paperNameWrapperRef
+          : activeSuggestions === "paper_weight"
+            ? paperWeightWrapperRef
+            : paperColorWrapperRef;
+    const handlePointerDown = (e: PointerEvent) => {
+      const target = e.target as Node;
+      if (ref.current && !ref.current.contains(target)) {
+        setActiveSuggestions(null);
+      }
+    };
+    document.addEventListener("pointerdown", handlePointerDown, true);
+    return () => document.removeEventListener("pointerdown", handlePointerDown, true);
+  }, [activeSuggestions]);
+
+  useEffect(() => {
     if (!mediaId) {
       setSpec(null);
       setVendor("");
@@ -151,21 +174,6 @@ export function NewOrderClient() {
     return list.filter((s) => s.toLowerCase().includes(v)).slice(0, 10);
   }
 
-  function clearSuggestionBlurTimeout() {
-    if (suggestionBlurTimeoutRef.current) {
-      clearTimeout(suggestionBlurTimeoutRef.current);
-      suggestionBlurTimeoutRef.current = null;
-    }
-  }
-
-  function handleSuggestionBlur() {
-    clearSuggestionBlurTimeout();
-    suggestionBlurTimeoutRef.current = setTimeout(() => {
-      setActiveSuggestions(null);
-      suggestionBlurTimeoutRef.current = null;
-    }, 400);
-  }
-
   function SuggestionDropdown({
     field,
     value,
@@ -182,10 +190,7 @@ export function NewOrderClient() {
     return (
       <ul
         className="absolute left-0 right-0 top-full z-10 mt-0.5 max-h-48 overflow-auto rounded-lg border border-slate-200 bg-white py-1 shadow-lg"
-        onMouseDown={(e) => {
-          e.preventDefault();
-          clearSuggestionBlurTimeout();
-        }}
+        onPointerDown={(e) => e.preventDefault()}
       >
         {filtered.map((s) => (
           <li
@@ -193,9 +198,9 @@ export function NewOrderClient() {
             role="button"
             tabIndex={-1}
             className="cursor-pointer px-3 py-2 text-sm text-slate-700 hover:bg-slate-100 active:bg-slate-200"
-            onMouseDown={(e) => {
+            onPointerDown={(e) => {
               e.preventDefault();
-              clearSuggestionBlurTimeout();
+              e.stopPropagation();
               onSelect(s);
               setActiveSuggestions(null);
             }}
@@ -454,13 +459,12 @@ export function NewOrderClient() {
               <h2 className="text-sm font-medium text-slate-500">낱장 인쇄 사양</h2>
               <label className="block">
                 <span className="block text-sm text-slate-600 mb-1">1. 사이즈</span>
-                <div className="relative">
+                <div ref={sizeWrapperRef} className="relative">
                   <input
                     type="text"
                     value={size}
                     onChange={(e) => setSize(e.target.value)}
                     onFocus={() => setActiveSuggestions("size")}
-                    onBlur={handleSuggestionBlur}
                     placeholder="예: 210×297"
                     className="input-dark w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
                   />
@@ -470,13 +474,12 @@ export function NewOrderClient() {
               <div className="grid gap-3 sm:grid-cols-3">
                 <label className="block">
                   <span className="block text-sm text-slate-600 mb-1">2. 용지명</span>
-                  <div className="relative">
+                  <div ref={paperNameWrapperRef} className="relative">
                     <input
                       type="text"
                       value={paperName}
                       onChange={(e) => setPaperName(e.target.value)}
                       onFocus={() => setActiveSuggestions("paper_name")}
-                      onBlur={handleSuggestionBlur}
                       className="input-dark w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
                     />
                     <SuggestionDropdown field="paper_name" value={paperName} onSelect={setPaperName} />
@@ -484,13 +487,12 @@ export function NewOrderClient() {
                 </label>
                 <label className="block">
                   <span className="block text-sm text-slate-600 mb-1">평량</span>
-                  <div className="relative">
+                  <div ref={paperWeightWrapperRef} className="relative">
                     <input
                       type="text"
                       value={paperWeight}
                       onChange={(e) => setPaperWeight(e.target.value)}
                       onFocus={() => setActiveSuggestions("paper_weight")}
-                      onBlur={handleSuggestionBlur}
                       placeholder="예: 80g"
                       className="input-dark w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
                     />
@@ -499,13 +501,12 @@ export function NewOrderClient() {
                 </label>
                 <label className="block">
                   <span className="block text-sm text-slate-600 mb-1">용지색상</span>
-                  <div className="relative">
+                  <div ref={paperColorWrapperRef} className="relative">
                     <input
                       type="text"
                       value={paperColor}
                       onChange={(e) => setPaperColor(e.target.value)}
                       onFocus={() => setActiveSuggestions("paper_color")}
-                      onBlur={handleSuggestionBlur}
                       placeholder="예: 백상지"
                       className="input-dark w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
                     />
