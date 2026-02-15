@@ -29,21 +29,21 @@ body {
   color: rgba(0, 0, 0, 0.95);
 }
 .input-dark::placeholder {
-  color: rgba(0, 0, 0, 0.5);
+  color: rgba(0, 0, 0, 0.3);
 }
 select.input-dark,
 select.input-dark option {
   color: rgba(0, 0, 0, 0.95);
 }
 
-/* 모든 input, textarea의 placeholder 텍스트 먹 50% 농도 */
+/* 모든 input, textarea의 placeholder 텍스트 먹 30% 농도 */
 input::placeholder,
 textarea::placeholder {
-  color: rgba(0, 0, 0, 0.5) !important;
+  color: rgba(0, 0, 0, 0.3) !important;
   opacity: 1;
 }
 
-/* select의 기본 옵션(placeholder 역할) 텍스트 먹 50% 농도 */
+/* select의 기본 옵션(placeholder 역할) 텍스트 먹 30% 농도 */
 select option:first-child {
-  color: rgba(0, 0, 0, 0.5);
+  color: rgba(0, 0, 0, 0.3);
 }
