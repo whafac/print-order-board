@@ -67,7 +67,7 @@ export function NewOrderClient() {
   const [paperColor, setPaperColor] = useState("");
   const [printSide, setPrintSide] = useState<"단면" | "양면">("양면");
   const [printColor, setPrintColor] = useState<"먹1도" | "컬러">("컬러");
-  const [finishing, setFinishing] = useState<Record<string, boolean>>({});
+  const [finishing, setFinishing] = useState<Record<string, boolean>>({ "없음": true });
   const [finishingEtc, setFinishingEtc] = useState("");
   const [cutting, setCutting] = useState<"필요없음" | "정재단">("필요없음");
   const [kindsCountStr, setKindsCountStr] = useState("1");
@@ -165,7 +165,14 @@ export function NewOrderClient() {
   }
 
   function setFinishingOption(key: string, checked: boolean) {
-    setFinishing((prev) => ({ ...prev, [key]: checked }));
+    setFinishing((prev) => {
+      if (key === "없음") {
+        if (checked) return { "없음": true };
+        return { ...prev, "없음": false };
+      }
+      if (checked) return { ...prev, [key]: true, "없음": false };
+      return { ...prev, [key]: false };
+    });
   }
 
   function filterSuggestions(list: string[], value: string): string[] {
@@ -260,8 +267,13 @@ export function NewOrderClient() {
         const sheetsPerKind = Math.max(1, parseInt(sheetsPerKindStr, 10) || 1);
         payload.media_name = sheetMediaName.trim() || "낱장 인쇄물";
         payload.qty = `${kindsCount}종 ${sheetsPerKind}매`;
-        const selectedFinishing: string[] = [...SHEET_FINISHING_OPTIONS.filter((k) => finishing[k])];
-        if (finishing["기타"] && finishingEtc.trim()) selectedFinishing.push(`기타: ${finishingEtc.trim()}`);
+        const hasOther = SHEET_FINISHING_OPTIONS.some((k) => finishing[k]) || (finishing["기타"] && finishingEtc.trim());
+        const selectedFinishing: string[] = finishing["없음"] || !hasOther
+          ? ["없음"]
+          : [
+              ...SHEET_FINISHING_OPTIONS.filter((k) => finishing[k]),
+              ...(finishing["기타"] && finishingEtc.trim() ? [`기타: ${finishingEtc.trim()}`] : []),
+            ];
         payload.type_spec = {
           size: size.trim(),
           paper_name: paperName.trim(),
@@ -555,6 +567,15 @@ export function NewOrderClient() {
               <div className="block">
                 <span className="block text-sm text-slate-600 mb-2">4. 후가공</span>
                 <div className="flex flex-wrap gap-x-6 gap-y-2">
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={!!finishing["없음"]}
+                      onChange={(e) => setFinishingOption("없음", e.target.checked)}
+                      className="rounded border-slate-300"
+                    />
+                    <span className="text-sm text-slate-700">없음</span>
+                  </label>
                   {SHEET_FINISHING_OPTIONS.map((opt) => (
                     <label key={opt} className="flex items-center gap-2 cursor-pointer">
                       <input
