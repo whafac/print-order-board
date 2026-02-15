@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 
@@ -81,6 +81,7 @@ export function NewOrderClient() {
     paper_color: string[];
   }>({ size: [], paper_name: [], paper_weight: [], paper_color: [] });
   const [activeSuggestions, setActiveSuggestions] = useState<"size" | "paper_name" | "paper_weight" | "paper_color" | null>(null);
+  const suggestionBlurTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     setRequesterName(getStoredRequester());
@@ -150,6 +151,21 @@ export function NewOrderClient() {
     return list.filter((s) => s.toLowerCase().includes(v)).slice(0, 10);
   }
 
+  function clearSuggestionBlurTimeout() {
+    if (suggestionBlurTimeoutRef.current) {
+      clearTimeout(suggestionBlurTimeoutRef.current);
+      suggestionBlurTimeoutRef.current = null;
+    }
+  }
+
+  function handleSuggestionBlur() {
+    clearSuggestionBlurTimeout();
+    suggestionBlurTimeoutRef.current = setTimeout(() => {
+      setActiveSuggestions(null);
+      suggestionBlurTimeoutRef.current = null;
+    }, 400);
+  }
+
   function SuggestionDropdown({
     field,
     value,
@@ -166,15 +182,20 @@ export function NewOrderClient() {
     return (
       <ul
         className="absolute left-0 right-0 top-full z-10 mt-0.5 max-h-48 overflow-auto rounded-lg border border-slate-200 bg-white py-1 shadow-lg"
-        onMouseDown={(e) => e.preventDefault()}
+        onMouseDown={(e) => {
+          e.preventDefault();
+          clearSuggestionBlurTimeout();
+        }}
       >
         {filtered.map((s) => (
           <li
             key={s}
             role="button"
             tabIndex={-1}
-            className="cursor-pointer px-3 py-2 text-sm text-slate-700 hover:bg-slate-100"
-            onMouseDown={() => {
+            className="cursor-pointer px-3 py-2 text-sm text-slate-700 hover:bg-slate-100 active:bg-slate-200"
+            onMouseDown={(e) => {
+              e.preventDefault();
+              clearSuggestionBlurTimeout();
               onSelect(s);
               setActiveSuggestions(null);
             }}
@@ -439,7 +460,7 @@ export function NewOrderClient() {
                     value={size}
                     onChange={(e) => setSize(e.target.value)}
                     onFocus={() => setActiveSuggestions("size")}
-                    onBlur={() => setTimeout(() => setActiveSuggestions(null), 200)}
+                    onBlur={handleSuggestionBlur}
                     placeholder="예: 210×297"
                     className="input-dark w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
                   />
@@ -455,7 +476,7 @@ export function NewOrderClient() {
                       value={paperName}
                       onChange={(e) => setPaperName(e.target.value)}
                       onFocus={() => setActiveSuggestions("paper_name")}
-                      onBlur={() => setTimeout(() => setActiveSuggestions(null), 200)}
+                      onBlur={handleSuggestionBlur}
                       className="input-dark w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
                     />
                     <SuggestionDropdown field="paper_name" value={paperName} onSelect={setPaperName} />
@@ -469,7 +490,7 @@ export function NewOrderClient() {
                       value={paperWeight}
                       onChange={(e) => setPaperWeight(e.target.value)}
                       onFocus={() => setActiveSuggestions("paper_weight")}
-                      onBlur={() => setTimeout(() => setActiveSuggestions(null), 200)}
+                      onBlur={handleSuggestionBlur}
                       placeholder="예: 80g"
                       className="input-dark w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
                     />
@@ -484,7 +505,7 @@ export function NewOrderClient() {
                       value={paperColor}
                       onChange={(e) => setPaperColor(e.target.value)}
                       onFocus={() => setActiveSuggestions("paper_color")}
-                      onBlur={() => setTimeout(() => setActiveSuggestions(null), 200)}
+                      onBlur={handleSuggestionBlur}
                       placeholder="예: 백상지"
                       className="input-dark w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
                     />
