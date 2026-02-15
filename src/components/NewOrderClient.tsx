@@ -446,6 +446,7 @@ export function NewOrderClient() {
         return;
       }
       setToast("ok");
+      window.alert("의뢰서가 정상적으로 제출되었습니다.");
       const jobId = data.job_id;
       const maxAttempts = 24;
       const intervalMs = 500;
