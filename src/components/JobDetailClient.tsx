@@ -20,6 +20,7 @@ interface Job {
   last_updated_by: string;
   order_type?: string;
   type_spec_snapshot?: string;
+  production_cost?: string;
 }
 
 const STATUS_OPTIONS = ["접수", "진행", "납품", "검수완료", "완료"];
@@ -54,8 +55,19 @@ export function JobDetailClient({ job }: { job: Job }) {
   } catch {}
   const isSheet = job.order_type === "sheet";
 
-  // 제작금액 계산 함수 (책자만)
+  // 제작금액 계산 함수 (책자만) - 구글시트에 저장된 값 우선 사용
   function calculateProductionCost() {
+    // 구글시트에 저장된 제작금액이 있으면 사용
+    if (job.production_cost && job.production_cost.trim() !== "") {
+      const cost = parseInt(job.production_cost.trim(), 10);
+      if (!Number.isNaN(cost)) {
+        const subtotal = Math.floor(cost / 1.1); // 부가세 제외
+        const vat = cost - subtotal;
+        return { subtotal, vat, total: cost };
+      }
+    }
+
+    // 저장된 값이 없으면 계산
     if (isSheet || !job.spec_snapshot) return null;
 
     // 페이지 수 추출 함수

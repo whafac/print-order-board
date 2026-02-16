@@ -21,7 +21,7 @@ export async function PATCH(
   { params }: { params: Promise<{ job_id: string }> }
 ) {
   const { job_id } = await params;
-  let body: { status?: string; last_updated_by?: string };
+  let body: { status?: string; last_updated_by?: string; production_cost?: string };
   try {
     body = await request.json();
   } catch {
@@ -31,6 +31,7 @@ export async function PATCH(
     const ok = await updateJob(job_id, {
       status: body.status,
       last_updated_by: body.last_updated_by,
+      production_cost: body.production_cost,
     });
     if (!ok) return NextResponse.json({ error: "Not found" }, { status: 404 });
     return NextResponse.json({ ok: true });

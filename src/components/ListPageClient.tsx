@@ -17,6 +17,7 @@ interface Job {
   status: string;
   order_type?: string;
   spec_snapshot?: string;
+  production_cost?: string;
 }
 
 const STATUS_LABELS: Record<string, string> = {
@@ -56,8 +57,15 @@ function formatCreatedAt(iso: string | undefined): string {
   return `${y}-${m}-${day} ${h}:${min}`;
 }
 
-// 제작금액 계산 함수 (책자만)
-function calculateTotalAmount(job: Job): number | null {
+// 제작금액 가져오기 함수 (구글시트에 저장된 값 우선, 없으면 계산)
+function getTotalAmount(job: Job): number | null {
+  // 구글시트에 저장된 제작금액이 있으면 사용
+  if (job.production_cost && job.production_cost.trim() !== "") {
+    const cost = parseInt(job.production_cost.trim(), 10);
+    if (!Number.isNaN(cost)) return cost;
+  }
+
+  // 저장된 값이 없으면 계산 (책자만)
   if (job.order_type === "sheet" || !job.spec_snapshot) return null;
 
   try {
@@ -356,7 +364,7 @@ export function ListPageClient() {
                       </td>
                       <td className="px-4 py-2 text-right">
                         {(() => {
-                          const total = calculateTotalAmount(job);
+                          const total = getTotalAmount(job);
                           return total !== null ? (
                             <span className="font-medium text-slate-800">{total.toLocaleString()}원</span>
                           ) : (
