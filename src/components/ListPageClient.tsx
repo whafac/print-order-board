@@ -16,6 +16,7 @@ interface Job {
   file_link: string;
   status: string;
   order_type?: string;
+  spec_snapshot?: string;
 }
 
 const STATUS_LABELS: Record<string, string> = {
@@ -53,6 +54,83 @@ function formatCreatedAt(iso: string | undefined): string {
   const h = String(d.getHours()).padStart(2, "0");
   const min = String(d.getMinutes()).padStart(2, "0");
   return `${y}-${m}-${day} ${h}:${min}`;
+}
+
+// 제작금액 계산 함수 (책자만)
+function calculateTotalAmount(job: Job): number | null {
+  if (job.order_type === "sheet" || !job.spec_snapshot) return null;
+
+  try {
+    const spec = JSON.parse(job.spec_snapshot);
+    
+    // 페이지 수 추출 함수
+    function extractPageCount(pageStr: string | undefined): number {
+      if (!pageStr) return 0;
+      const match = String(pageStr).match(/(\d+)/);
+      return match ? parseInt(match[1], 10) : 0;
+    }
+
+    // 수량 추출
+    const qtyNum = parseInt(job.qty.trim(), 10) || 1;
+
+    // 표지 페이지 수 계산
+    const coverPrint = String(spec.cover_print || spec.print_color || "");
+    const coverPageCount = coverPrint.includes("단면") ? 2 : 4;
+    const coverCost = coverPageCount * 300 * qtyNum;
+
+    // 내지 페이지 수 계산
+    const innerPages = String(spec.inner_pages || spec.pages || "");
+    const innerPageCount = extractPageCount(innerPages);
+    const innerCost = innerPageCount * 300 * qtyNum;
+
+    // 추가 내지 비용 계산
+    let additionalInnerCost = 0;
+    const additionalPages = spec.additional_inner_pages;
+    if (Array.isArray(additionalPages)) {
+      additionalPages.forEach((item: Record<string, unknown>) => {
+        const pageCount = extractPageCount(String(item.pages || ""));
+        additionalInnerCost += pageCount * 300 * qtyNum;
+      });
+    }
+
+    // 제본 비용
+    const binding = String(spec.binding || "");
+    let bindingCost = 0;
+    if (binding.includes("무선제본")) {
+      bindingCost = 2000 * qtyNum;
+    } else if (binding.includes("중철제본")) {
+      bindingCost = 1500 * qtyNum;
+    }
+
+    // 후가공 비용
+    const finishing = String(spec.finishing || "");
+    const finishingLower = finishing.toLowerCase().trim();
+    let finishingCost = 0;
+    if (finishingLower.startsWith("없음") || finishingLower === "") {
+      finishingCost = 0;
+    } else if (finishingLower.includes("에폭시")) {
+      finishingCost = 120000;
+    } else if (
+      finishingLower.includes("코팅") ||
+      finishingLower.includes("라미네이팅") ||
+      finishingLower.includes("라미테이팅")
+    ) {
+      let coatingPageCount = 2;
+      if (finishingLower.includes("양면")) {
+        coatingPageCount = 4;
+      }
+      finishingCost = coatingPageCount * 500 * qtyNum;
+    }
+
+    // 총 제작금액
+    const subtotal = coverCost + innerCost + additionalInnerCost + bindingCost + finishingCost;
+    const vat = Math.floor(subtotal * 0.1);
+    const total = subtotal + vat;
+
+    return total;
+  } catch {
+    return null;
+  }
 }
 
 export function ListPageClient() {
@@ -235,6 +313,7 @@ export function ListPageClient() {
                     <th className="px-4 py-3 font-medium">의뢰자</th>
                     <th className="px-4 py-3 font-medium">생성일</th>
                     <th className="px-4 py-3 font-medium w-10">파일</th>
+                    <th className="px-4 py-3 font-medium text-right">총금액</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -274,6 +353,16 @@ export function ListPageClient() {
                         ) : (
                           <span className="text-slate-300">-</span>
                         )}
+                      </td>
+                      <td className="px-4 py-2 text-right">
+                        {(() => {
+                          const total = calculateTotalAmount(job);
+                          return total !== null ? (
+                            <span className="font-medium text-slate-800">{total.toLocaleString()}원</span>
+                          ) : (
+                            <span className="text-slate-300">-</span>
+                          );
+                        })()}
                       </td>
                     </tr>
                   ))}

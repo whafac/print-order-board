@@ -43,7 +43,7 @@ export function JobDetailClient({ job }: { job: Job }) {
   const [saving, setSaving] = useState(false);
   const [toast, setToast] = useState<"ok" | "err" | null>(null);
 
-  let spec: Record<string, string> = {};
+  let spec: Record<string, string | unknown[]> = {};
   try {
     if (job.spec_snapshot) spec = JSON.parse(job.spec_snapshot);
   } catch {}
@@ -53,6 +53,77 @@ export function JobDetailClient({ job }: { job: Job }) {
     if (job.type_spec_snapshot) typeSpec = JSON.parse(job.type_spec_snapshot);
   } catch {}
   const isSheet = job.order_type === "sheet";
+
+  // 제작금액 계산 함수 (책자만)
+  function calculateProductionCost() {
+    if (isSheet || !job.spec_snapshot) return null;
+
+    // 페이지 수 추출 함수
+    function extractPageCount(pageStr: string | undefined): number {
+      if (!pageStr) return 0;
+      const match = String(pageStr).match(/(\d+)/);
+      return match ? parseInt(match[1], 10) : 0;
+    }
+
+    // 수량 추출
+    const qtyNum = parseInt(job.qty.trim(), 10) || 1;
+
+    // 표지 페이지 수 계산
+    const coverPrint = String(spec.cover_print || spec.print_color || "");
+    const coverPageCount = coverPrint.includes("단면") ? 2 : 4;
+    const coverCost = coverPageCount * 300 * qtyNum;
+
+    // 내지 페이지 수 계산
+    const innerPages = String(spec.inner_pages || spec.pages || "");
+    const innerPageCount = extractPageCount(innerPages);
+    const innerCost = innerPageCount * 300 * qtyNum;
+
+    // 추가 내지 비용 계산
+    let additionalInnerCost = 0;
+    const additionalPages = spec.additional_inner_pages;
+    if (Array.isArray(additionalPages)) {
+      additionalPages.forEach((item: Record<string, unknown>) => {
+        const pageCount = extractPageCount(String(item.pages || ""));
+        additionalInnerCost += pageCount * 300 * qtyNum;
+      });
+    }
+
+    // 제본 비용
+    const binding = String(spec.binding || "");
+    let bindingCost = 0;
+    if (binding.includes("무선제본")) {
+      bindingCost = 2000 * qtyNum;
+    } else if (binding.includes("중철제본")) {
+      bindingCost = 1500 * qtyNum;
+    }
+
+    // 후가공 비용
+    const finishing = String(spec.finishing || "");
+    const finishingLower = finishing.toLowerCase().trim();
+    let finishingCost = 0;
+    if (finishingLower.startsWith("없음") || finishingLower === "") {
+      finishingCost = 0;
+    } else if (finishingLower.includes("에폭시")) {
+      finishingCost = 120000;
+    } else if (
+      finishingLower.includes("코팅") ||
+      finishingLower.includes("라미네이팅") ||
+      finishingLower.includes("라미테이팅")
+    ) {
+      let coatingPageCount = 2;
+      if (finishingLower.includes("양면")) {
+        coatingPageCount = 4;
+      }
+      finishingCost = coatingPageCount * 500 * qtyNum;
+    }
+
+    // 총 제작금액
+    const subtotal = coverCost + innerCost + additionalInnerCost + bindingCost + finishingCost;
+    const vat = Math.floor(subtotal * 0.1);
+    const total = subtotal + vat;
+
+    return { subtotal, vat, total };
+  }
 
   async function logout() {
     await fetch("/api/auth/logout", { method: "POST" });
@@ -214,6 +285,33 @@ export function JobDetailClient({ job }: { job: Job }) {
             })()}
           </>
         )}
+
+        {/* 제작금액 표시 (책자만) */}
+        {!isSheet && (() => {
+          const cost = calculateProductionCost();
+          if (!cost) return null;
+          return (
+            <section className="mb-6 rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+              <h2 className="mb-3 text-sm font-medium text-slate-500">제작금액</h2>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-3 border-r border-slate-200 pr-4">
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm text-slate-600">공급가</span>
+                    <span className="text-sm font-medium text-slate-800">{cost.subtotal.toLocaleString()}원</span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm text-slate-600">부가세 (10%)</span>
+                    <span className="text-sm font-medium text-slate-800">{cost.vat.toLocaleString()}원</span>
+                  </div>
+                </div>
+                <div className="flex flex-col justify-center pl-4">
+                  <div className="text-xs text-slate-500 mb-1">총 결제금액</div>
+                  <div className="text-2xl font-bold text-red-600">{cost.total.toLocaleString()}원</div>
+                </div>
+              </div>
+            </section>
+          );
+        })()}
 
         <section className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
           <h2 className="mb-3 text-sm font-medium text-slate-500">상태 변경</h2>
