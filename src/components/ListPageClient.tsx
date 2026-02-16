@@ -183,11 +183,9 @@ export function ListPageClient() {
       if (Array.isArray(specData)) setSpecs(specData);
 
       const all = Array.isArray(jobsData) ? jobsData : [];
-      const now = new Date();
-      const in7 = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
       setSummary({
         total: all.length,
-        due7: all.filter((j: Job) => j.due_date && new Date(j.due_date) <= in7 && new Date(j.due_date) >= now).length,
+        due7: all.filter((j: Job) => j.status === "진행").length,
         done: all.filter((j: Job) => j.status === "검수완료" || j.status === "완료").length,
       });
     } finally {
@@ -229,11 +227,11 @@ export function ListPageClient() {
             <p className="text-2xl font-semibold text-slate-800">{summary.total}</p>
           </div>
           <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
-            <p className="text-sm text-slate-500">납기 7일 이내</p>
+            <p className="text-sm text-slate-500">진행상태인 건수</p>
             <p className="text-2xl font-semibold text-amber-600">{summary.due7}</p>
           </div>
           <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
-            <p className="text-sm text-slate-500">검수완료</p>
+            <p className="text-sm text-slate-500">완료상태인 건</p>
             <p className="text-2xl font-semibold text-emerald-600">{summary.done}</p>
           </div>
         </div>
@@ -320,60 +318,126 @@ export function ListPageClient() {
           {loading ? (
             <div className="p-8 text-center text-slate-500">불러오는 중…</div>
           ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full min-w-[800px] text-sm">
-                <thead>
-                  <tr className="border-b border-slate-200 bg-slate-50 text-left text-slate-600">
-                    <th className="px-4 py-3 font-medium">상태</th>
-                    <th className="px-4 py-3 font-medium">납기</th>
-                    <th className="px-4 py-3 font-medium">매체</th>
-                    <th className="px-4 py-3 font-medium">수량</th>
-                    <th className="px-4 py-3 font-medium">출력실</th>
-                    <th className="px-4 py-3 font-medium">의뢰자</th>
-                    <th className="px-4 py-3 font-medium">생성일</th>
-                    <th className="px-4 py-3 font-medium w-10">파일</th>
-                    <th className="px-4 py-3 font-medium text-right">총금액</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {jobs.map((job) => (
-                    <tr
-                      key={job.job_id}
-                      className="border-b border-slate-100 hover:bg-slate-50 cursor-pointer"
-                      onClick={() => router.push(`/jobs/${job.job_id}`)}
-                    >
-                      <td className="px-4 py-2">
-                        <span className={`inline-block rounded-full px-2 py-0.5 text-xs font-medium ${getStatusStyle(job.status)}`}>
-                          {STATUS_LABELS[job.status] ?? job.status}
-                        </span>
-                      </td>
-                      <td className="px-4 py-2 text-slate-700">{job.due_date ? job.due_date.slice(0, 10) : "-"}</td>
-                      <td className="px-4 py-2 text-slate-700">
-                        <span>{job.media_name || "-"}</span>
-                        {job.order_type === "sheet" && (
-                          <span className="ml-1.5 rounded bg-slate-200 px-1.5 py-0.5 text-xs text-slate-600">낱장</span>
-                        )}
-                      </td>
-                      <td className="px-4 py-2 text-slate-700">{job.qty || "-"}</td>
-                      <td className="px-4 py-2 text-slate-700">{job.vendor || "-"}</td>
-                      <td className="px-4 py-2 text-slate-700">{job.requester_name || "-"}</td>
-                      <td className="px-4 py-2 text-slate-600">{formatCreatedAt(job.created_at)}</td>
-                      <td className="px-4 py-2">
-                        {job.file_link ? (
-                          <a
-                            href={job.file_link}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="text-blue-600 hover:underline"
-                            onClick={(e) => e.stopPropagation()}
-                          >
-                            📎
-                          </a>
-                        ) : (
-                          <span className="text-slate-300">-</span>
-                        )}
-                      </td>
-                      <td className="px-4 py-2 text-right">
+            <>
+              {/* 데스크탑: 테이블 형태 */}
+              <div className="hidden md:block overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b border-slate-200 bg-slate-50 text-left text-slate-600">
+                      <th className="px-4 py-3 font-medium">상태</th>
+                      <th className="px-4 py-3 font-medium">납기</th>
+                      <th className="px-4 py-3 font-medium">매체</th>
+                      <th className="px-4 py-3 font-medium">수량</th>
+                      <th className="px-4 py-3 font-medium">출력실</th>
+                      <th className="px-4 py-3 font-medium">의뢰자</th>
+                      <th className="px-4 py-3 font-medium">생성일</th>
+                      <th className="px-4 py-3 font-medium w-10">파일</th>
+                      <th className="px-4 py-3 font-medium text-right">총금액</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {jobs.map((job) => (
+                      <tr
+                        key={job.job_id}
+                        className="border-b border-slate-100 hover:bg-slate-50 cursor-pointer"
+                        onClick={() => router.push(`/jobs/${job.job_id}`)}
+                      >
+                        <td className="px-4 py-2">
+                          <span className={`inline-block rounded-full px-2 py-0.5 text-xs font-medium ${getStatusStyle(job.status)}`}>
+                            {STATUS_LABELS[job.status] ?? job.status}
+                          </span>
+                        </td>
+                        <td className="px-4 py-2 text-slate-700">{job.due_date ? job.due_date.slice(0, 10) : "-"}</td>
+                        <td className="px-4 py-2 text-slate-700">
+                          <span>{job.media_name || "-"}</span>
+                          {job.order_type === "sheet" && (
+                            <span className="ml-1.5 rounded bg-slate-200 px-1.5 py-0.5 text-xs text-slate-600">낱장</span>
+                          )}
+                        </td>
+                        <td className="px-4 py-2 text-slate-700">{job.qty || "-"}</td>
+                        <td className="px-4 py-2 text-slate-700">{job.vendor || "-"}</td>
+                        <td className="px-4 py-2 text-slate-700">{job.requester_name || "-"}</td>
+                        <td className="px-4 py-2 text-slate-600">{formatCreatedAt(job.created_at)}</td>
+                        <td className="px-4 py-2">
+                          {job.file_link ? (
+                            <a
+                              href={job.file_link}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-blue-600 hover:underline"
+                              onClick={(e) => e.stopPropagation()}
+                            >
+                              📎
+                            </a>
+                          ) : (
+                            <span className="text-slate-300">-</span>
+                          )}
+                        </td>
+                        <td className="px-4 py-2 text-right">
+                          {(() => {
+                            const total = getTotalAmount(job);
+                            return total !== null ? (
+                              <span className="font-medium text-slate-800">{total.toLocaleString()}원</span>
+                            ) : (
+                              <span className="text-slate-300">-</span>
+                            );
+                          })()}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+
+              {/* 모바일: 카드 형태 */}
+              <div className="md:hidden divide-y divide-slate-200">
+                {jobs.map((job) => (
+                  <div
+                    key={job.job_id}
+                    className="p-4 hover:bg-slate-50 cursor-pointer"
+                    onClick={() => router.push(`/jobs/${job.job_id}`)}
+                  >
+                    <div className="flex items-start justify-between mb-2">
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 mb-1">
+                          <span className={`inline-block rounded-full px-2 py-0.5 text-xs font-medium whitespace-nowrap ${getStatusStyle(job.status)}`}>
+                            {STATUS_LABELS[job.status] ?? job.status}
+                          </span>
+                          {job.order_type === "sheet" && (
+                            <span className="rounded bg-slate-200 px-1.5 py-0.5 text-xs text-slate-600 whitespace-nowrap">낱장</span>
+                          )}
+                        </div>
+                        <h3 className="text-sm font-medium text-slate-800 truncate">{job.media_name || "-"}</h3>
+                      </div>
+                      {job.file_link && (
+                        <a
+                          href={job.file_link}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-blue-600 hover:underline ml-2 flex-shrink-0"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          📎
+                        </a>
+                      )}
+                    </div>
+                    <div className="grid grid-cols-2 gap-2 text-xs text-slate-600">
+                      <div>
+                        <span className="text-slate-500">납기:</span> {job.due_date ? job.due_date.slice(0, 10) : "-"}
+                      </div>
+                      <div>
+                        <span className="text-slate-500">수량:</span> {job.qty || "-"}
+                      </div>
+                      <div>
+                        <span className="text-slate-500">출력실:</span> {job.vendor || "-"}
+                      </div>
+                      <div>
+                        <span className="text-slate-500">의뢰자:</span> {job.requester_name || "-"}
+                      </div>
+                      <div>
+                        <span className="text-slate-500">생성일:</span> {formatCreatedAt(job.created_at)}
+                      </div>
+                      <div className="text-right">
                         {(() => {
                           const total = getTotalAmount(job);
                           return total !== null ? (
@@ -382,12 +446,12 @@ export function ListPageClient() {
                             <span className="text-slate-300">-</span>
                           );
                         })()}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </>
           )}
           {!loading && jobs.length === 0 && (
             <div className="p-8 text-center text-slate-500">의뢰가 없습니다.</div>
