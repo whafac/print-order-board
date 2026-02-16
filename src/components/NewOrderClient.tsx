@@ -504,26 +504,52 @@ export function NewOrderClient() {
 <html>
 <head>
   <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes">
   <title>의뢰 내용 미리보기</title>
   <style>
     * { box-sizing: border-box; }
-    body { font-family: system-ui, sans-serif; margin: 0; padding: 24px; background: #f1f5f9; color: #1e293b; }
+    body { font-family: system-ui, sans-serif; margin: 0; padding: 16px; background: #f1f5f9; color: #1e293b; -webkit-text-size-adjust: 100%; }
     .wrap { max-width: 560px; margin: 0 auto; }
-    h1 { font-size: 1.25rem; font-weight: 600; margin: 0 0 16px; color: #0f172a; }
-    .badge { display: inline-block; background: #e2e8f0; color: #475569; font-size: 0.75rem; padding: 6px 12px; border-radius: 8px; margin-bottom: 16px; }
-    .block { background: #fff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 20px; margin-bottom: 16px; box-shadow: 0 1px 3px rgba(0,0,0,.06); }
+    h1 { font-size: 1.5rem; font-weight: 600; margin: 0 0 16px; color: #0f172a; }
+    .badge { display: inline-block; background: #e2e8f0; color: #475569; font-size: 0.875rem; padding: 8px 14px; border-radius: 8px; margin-bottom: 16px; }
+    .block { background: #fff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 16px; margin-bottom: 16px; box-shadow: 0 1px 3px rgba(0,0,0,.06); }
     .block.spec { background: #f8fafc; }
-    .sec { font-size: 0.875rem; color: #64748b; margin: 0 0 12px; font-weight: 500; }
-    .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px 16px; font-size: 0.875rem; }
+    .sec { font-size: 1rem; color: #64748b; margin: 0 0 12px; font-weight: 500; }
+    .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px 16px; font-size: 0.9375rem; }
     .grid .full { grid-column: 1 / -1; }
-    .grid dt { color: #64748b; margin: 0; }
+    .grid dt { color: #64748b; margin: 0; font-weight: 500; }
     .grid dd { margin: 0; color: #1e293b; word-break: break-all; white-space: pre-wrap; }
-    .actions { display: flex; gap: 12px; margin-top: 20px; }
-    .btn { padding: 10px 24px; font-size: 0.875rem; border-radius: 8px; cursor: pointer; border: none; font-weight: 500; }
+    .actions { display: flex; gap: 12px; margin-top: 24px; flex-wrap: wrap; }
+    .btn { padding: 14px 28px; font-size: 1rem; border-radius: 8px; cursor: pointer; border: none; font-weight: 500; min-height: 44px; flex: 1; min-width: 120px; }
     .btn-primary { background: #1e293b; color: #fff; }
     .btn-primary:hover { background: #334155; }
+    .btn-primary:active { background: #475569; }
     .btn-secondary { background: #fff; color: #475569; border: 1px solid #cbd5e1; }
     .btn-secondary:hover { background: #f1f5f9; }
+    .btn-secondary:active { background: #e2e8f0; }
+    
+    @media (max-width: 640px) {
+      body { padding: 12px; }
+      h1 { font-size: 1.25rem; }
+      .badge { font-size: 0.8125rem; padding: 6px 12px; }
+      .block { padding: 14px; }
+      .sec { font-size: 0.9375rem; }
+      .grid { grid-template-columns: 1fr; gap: 10px; font-size: 0.9375rem; }
+      .grid dt { font-size: 0.875rem; margin-bottom: 4px; }
+      .grid dd { font-size: 0.9375rem; }
+      .actions { flex-direction: column; gap: 10px; }
+      .btn { width: 100%; font-size: 1rem; padding: 14px 24px; }
+    }
+    
+    @media (max-width: 480px) {
+      body { padding: 10px; }
+      h1 { font-size: 1.125rem; margin-bottom: 12px; }
+      .block { padding: 12px; margin-bottom: 12px; }
+      .sec { font-size: 0.875rem; margin-bottom: 10px; }
+      .grid { font-size: 0.875rem; gap: 8px; }
+      .grid dt { font-size: 0.8125rem; }
+      .grid dd { font-size: 0.875rem; }
+    }
   </style>
 </head>
 <body>
@@ -562,11 +588,23 @@ export function NewOrderClient() {
   </script>
 </body>
 </html>`;
-    const win = window.open("", "_blank", "width=620,height=700,scrollbars=yes,resizable=yes");
+    // 모바일 감지
+    const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent) || window.innerWidth <= 768;
+    
+    // 모바일에서는 전체 화면으로, 데스크탑에서는 고정 크기로
+    const windowFeatures = isMobile
+      ? "width=device-width,height=device-height,scrollbars=yes,resizable=yes"
+      : "width=620,height=700,scrollbars=yes,resizable=yes";
+    
+    const win = window.open("", "_blank", windowFeatures);
     if (win) {
       win.document.write(html);
       win.document.close();
       previewWindowRef.current = win;
+      // 모바일에서 창을 포커스
+      if (isMobile) {
+        win.focus();
+      }
     } else {
       window.alert("팝업이 차단되었을 수 있습니다. 브라우저에서 팝업을 허용해 주세요.");
     }
