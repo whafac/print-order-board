@@ -44,6 +44,7 @@ interface Spec {
   finishing: string;
   packaging_delivery: string;
   file_rule: string;
+  additional_inner_pages?: string; // JSON 문자열
   // 하위 호환
   pages?: string;
   print_color?: string;
@@ -208,7 +209,21 @@ export function NewOrderClient() {
       setFinishingSpec(s.finishing || "");
       setPackagingDelivery(s.packaging_delivery || "");
       setFileRule(s.file_rule || "");
-      setAdditionalInnerPages([]);
+      // 기본 추가 내지 불러오기
+      try {
+        if (s.additional_inner_pages) {
+          const parsed = JSON.parse(s.additional_inner_pages);
+          if (Array.isArray(parsed)) {
+            setAdditionalInnerPages(parsed);
+          } else {
+            setAdditionalInnerPages([]);
+          }
+        } else {
+          setAdditionalInnerPages([]);
+        }
+      } catch {
+        setAdditionalInnerPages([]);
+      }
     }
   }, [mediaId, specs]);
 

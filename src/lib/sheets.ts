@@ -30,6 +30,7 @@ export interface SpecRow {
   finishing: string;
   packaging_delivery: string;
   file_rule: string;
+  additional_inner_pages: string; // JSON 문자열로 저장
   // 하위 호환: 기존 데이터용
   pages?: string;
   print_color?: string;
@@ -38,7 +39,7 @@ export interface SpecRow {
 const SPEC_HEADERS: (keyof SpecRow)[] = [
   "media_id", "media_name", "default_vendor", "trim_size", "cover_type",
   "cover_paper", "cover_print", "inner_pages", "inner_paper", "inner_print",
-  "binding", "finishing", "packaging_delivery", "file_rule",
+  "binding", "finishing", "packaging_delivery", "file_rule", "additional_inner_pages",
 ];
 
 export interface JobRow {
@@ -87,6 +88,7 @@ function rowToSpecByHeader(row: string[], header: string[]): SpecRow {
   o.finishing = getVal("finishing");
   o.packaging_delivery = getVal("packaging_delivery");
   o.file_rule = getVal("file_rule");
+  o.additional_inner_pages = getVal("additional_inner_pages") || "";
   return o as unknown as SpecRow;
 }
 
@@ -135,7 +137,7 @@ export async function getSpecList(): Promise<SpecRow[]> {
   const { sheets, sheetId } = await getSheets();
   const res = await sheets.spreadsheets.values.get({
     spreadsheetId: sheetId,
-    range: `${SPEC_SHEET}!A:N`,
+    range: `${SPEC_SHEET}!A:O`,
   });
   const rows = res.data.values ?? [];
   const start = specDataStart(rows);
@@ -169,7 +171,7 @@ export async function appendSpec(spec: SpecRow): Promise<void> {
   const row = specToRow(spec);
   await sheets.spreadsheets.values.append({
     spreadsheetId: sheetId,
-    range: `${SPEC_SHEET}!A:N`,
+    range: `${SPEC_SHEET}!A:O`,
     valueInputOption: "USER_ENTERED",
     requestBody: { values: [row] },
   });
@@ -180,7 +182,7 @@ export async function updateSpecByMediaId(mediaId: string, updates: Partial<Spec
   const { sheets, sheetId } = await getSheets();
   const res = await sheets.spreadsheets.values.get({
     spreadsheetId: sheetId,
-    range: `${SPEC_SHEET}!A:N`,
+    range: `${SPEC_SHEET}!A:O`,
   });
   const rows = res.data.values ?? [];
   if (rows.length < 1) return false;
@@ -195,7 +197,7 @@ export async function updateSpecByMediaId(mediaId: string, updates: Partial<Spec
     const current = headerCol(header, "media_id") >= 0 ? rowToSpecByHeader(row, header) : rowToSpec(row);
     const merged: SpecRow = { ...current, ...updates };
     const newRow = specToRow(merged);
-    const range = `${SPEC_SHEET}!A${i + 1}:N${i + 1}`;
+    const range = `${SPEC_SHEET}!A${i + 1}:O${i + 1}`;
     await sheets.spreadsheets.values.update({
       spreadsheetId: sheetId,
       range,

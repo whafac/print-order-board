@@ -44,6 +44,7 @@ export async function POST(request: NextRequest) {
     finishing: body.finishing ?? "",
     packaging_delivery: body.packaging_delivery ?? "",
     file_rule: body.file_rule ?? "",
+    additional_inner_pages: body.additional_inner_pages ?? "",
   };
   try {
     await appendSpec(spec);
