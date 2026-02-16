@@ -47,6 +47,17 @@ const thisMonth = () => {
 
 function formatCreatedAt(iso: string | undefined): string {
   if (!iso) return "-";
+  
+  // ISO 8601 형식 파싱 (KST +09:00 또는 UTC Z 형식 지원)
+  // 예: "2026-02-16T14:16:15.677+09:00" 또는 "2026-02-16T14:16:15.677Z"
+  const match = iso.match(/^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})(?:\.\d+)?([+-]\d{2}:\d{2}|Z)?/);
+  
+  if (match) {
+    const [, year, month, day, hour, minute] = match;
+    return `${year}-${month}-${day} ${hour}:${minute}`;
+  }
+  
+  // 파싱 실패 시 기존 방식으로 폴백
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return iso.slice(0, 10) || "-";
   const y = d.getFullYear();
