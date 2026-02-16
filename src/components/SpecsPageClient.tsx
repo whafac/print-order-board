@@ -8,14 +8,19 @@ interface Spec {
   media_name: string;
   default_vendor: string;
   trim_size: string;
-  pages: string;
+  cover_type: string;
   cover_paper: string;
+  cover_print: string;
+  inner_pages: string;
   inner_paper: string;
-  print_color: string;
+  inner_print: string;
   binding: string;
   finishing: string;
   packaging_delivery: string;
   file_rule: string;
+  // 하위 호환
+  pages?: string;
+  print_color?: string;
 }
 
 const SPEC_FIELDS: { key: keyof Spec; label: string }[] = [
@@ -23,10 +28,12 @@ const SPEC_FIELDS: { key: keyof Spec; label: string }[] = [
   { key: "media_name", label: "매체명" },
   { key: "default_vendor", label: "기본 출력실" },
   { key: "trim_size", label: "판형" },
-  { key: "pages", label: "면수" },
-  { key: "cover_paper", label: "표지" },
-  { key: "inner_paper", label: "내지" },
-  { key: "print_color", label: "도수" },
+  { key: "cover_type", label: "표지유형" },
+  { key: "cover_paper", label: "표지용지" },
+  { key: "cover_print", label: "표지인쇄" },
+  { key: "inner_pages", label: "내지페이지" },
+  { key: "inner_paper", label: "내지용지" },
+  { key: "inner_print", label: "내지인쇄" },
   { key: "binding", label: "제본" },
   { key: "finishing", label: "후가공" },
   { key: "packaging_delivery", label: "포장·납품" },
@@ -38,10 +45,12 @@ const emptySpec = (): Spec => ({
   media_name: "",
   default_vendor: "",
   trim_size: "",
-  pages: "",
+  cover_type: "",
   cover_paper: "",
+  cover_print: "",
+  inner_pages: "",
   inner_paper: "",
-  print_color: "",
+  inner_print: "",
   binding: "",
   finishing: "",
   packaging_delivery: "",

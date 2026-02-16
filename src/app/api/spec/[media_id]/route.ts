@@ -30,9 +30,9 @@ export async function PATCH(
   }
   const updates: Partial<SpecRow> = {};
   const keys: (keyof SpecRow)[] = [
-    "media_id", "media_name", "default_vendor", "trim_size", "pages",
-    "cover_paper", "inner_paper", "print_color", "binding",
-    "finishing", "packaging_delivery", "file_rule",
+    "media_id", "media_name", "default_vendor", "trim_size", "cover_type",
+    "cover_paper", "cover_print", "inner_pages", "inner_paper", "inner_print",
+    "binding", "finishing", "packaging_delivery", "file_rule",
   ];
   keys.forEach((k) => {
     if (body[k] !== undefined) updates[k] = String(body[k] ?? "");

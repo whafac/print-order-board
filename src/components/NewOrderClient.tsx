@@ -34,14 +34,19 @@ interface Spec {
   media_name: string;
   default_vendor: string;
   trim_size: string;
-  pages: string;
+  cover_type: string;
   cover_paper: string;
+  cover_print: string;
+  inner_pages: string;
   inner_paper: string;
-  print_color: string;
+  inner_print: string;
   binding: string;
   finishing: string;
   packaging_delivery: string;
   file_rule: string;
+  // 하위 호환
+  pages?: string;
+  print_color?: string;
 }
 
 export function NewOrderClient() {
@@ -62,10 +67,12 @@ export function NewOrderClient() {
 
   // 책자 전용 제작사양 (수정 가능)
   const [trimSize, setTrimSize] = useState("");
-  const [pages, setPages] = useState("");
+  const [coverType, setCoverType] = useState("");
   const [coverPaper, setCoverPaper] = useState("");
+  const [coverPrint, setCoverPrint] = useState("");
+  const [innerPages, setInnerPages] = useState("");
   const [innerPaper, setInnerPaper] = useState("");
-  const [printColorSpec, setPrintColorSpec] = useState("");
+  const [innerPrint, setInnerPrint] = useState("");
   const [binding, setBinding] = useState("");
   const [finishingSpec, setFinishingSpec] = useState("");
   const [packagingDelivery, setPackagingDelivery] = useState("");
@@ -164,10 +171,12 @@ export function NewOrderClient() {
       setSpec(null);
       setVendor("");
       setTrimSize("");
-      setPages("");
+      setCoverType("");
       setCoverPaper("");
+      setCoverPrint("");
+      setInnerPages("");
       setInnerPaper("");
-      setPrintColorSpec("");
+      setInnerPrint("");
       setBinding("");
       setFinishingSpec("");
       setPackagingDelivery("");
@@ -179,10 +188,12 @@ export function NewOrderClient() {
     setVendor(s?.default_vendor ?? "");
     if (s) {
       setTrimSize(s.trim_size || "");
-      setPages(s.pages || "");
+      setCoverType(s.cover_type || "");
       setCoverPaper(s.cover_paper || "");
+      setCoverPrint(s.cover_print || s.print_color || "");
+      setInnerPages(s.inner_pages || s.pages || "");
       setInnerPaper(s.inner_paper || "");
-      setPrintColorSpec(s.print_color || "");
+      setInnerPrint(s.inner_print || s.print_color || "");
       setBinding(s.binding || "");
       setFinishingSpec(s.finishing || "");
       setPackagingDelivery(s.packaging_delivery || "");
@@ -331,10 +342,12 @@ export function NewOrderClient() {
       <h3 class="sec">제작 사양 (매체)</h3>
       <dl class="grid">
         <div><dt>판형</dt><dd>${esc(trimSize.trim() || "-")}</dd></div>
-        <div><dt>면수</dt><dd>${esc(pages.trim() || "-")}</dd></div>
-        <div><dt>표지</dt><dd>${esc(coverPaper.trim() || "-")}</dd></div>
-        <div><dt>내지</dt><dd>${esc(innerPaper.trim() || "-")}</dd></div>
-        <div><dt>도수</dt><dd>${esc(printColorSpec.trim() || "-")}</dd></div>
+        <div><dt>표지유형</dt><dd>${esc(coverType.trim() || "-")}</dd></div>
+        <div><dt>표지용지</dt><dd>${esc(coverPaper.trim() || "-")}</dd></div>
+        <div><dt>표지인쇄</dt><dd>${esc(coverPrint.trim() || "-")}</dd></div>
+        <div><dt>내지페이지</dt><dd>${esc(innerPages.trim() || "-")}</dd></div>
+        <div><dt>내지용지</dt><dd>${esc(innerPaper.trim() || "-")}</dd></div>
+        <div><dt>내지인쇄</dt><dd>${esc(innerPrint.trim() || "-")}</dd></div>
         <div><dt>제본</dt><dd>${esc(binding.trim() || "-")}</dd></div>
         <div><dt>후가공</dt><dd>${esc(finishingSpec.trim() || "-")}</dd></div>
         <div><dt>포장·납품</dt><dd>${esc(packagingDelivery.trim() || "-")}</dd></div>
@@ -436,10 +449,12 @@ export function NewOrderClient() {
           media_name: spec?.media_name || "",
           default_vendor: spec?.default_vendor || "",
           trim_size: trimSize.trim(),
-          pages: pages.trim(),
+          cover_type: coverType.trim(),
           cover_paper: coverPaper.trim(),
+          cover_print: coverPrint.trim(),
+          inner_pages: innerPages.trim(),
           inner_paper: innerPaper.trim(),
-          print_color: printColorSpec.trim(),
+          inner_print: innerPrint.trim(),
           binding: binding.trim(),
           finishing: finishingSpec.trim(),
           packaging_delivery: packagingDelivery.trim(),
@@ -870,16 +885,16 @@ export function NewOrderClient() {
                   />
                 </label>
                 <label className="block">
-                  <span className="block text-sm text-slate-600 mb-1">면수</span>
+                  <span className="block text-sm text-slate-600 mb-1">표지유형</span>
                   <input
                     type="text"
-                    value={pages}
-                    onChange={(e) => setPages(e.target.value)}
+                    value={coverType}
+                    onChange={(e) => setCoverType(e.target.value)}
                     className="input-dark w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
                   />
                 </label>
                 <label className="block">
-                  <span className="block text-sm text-slate-600 mb-1">표지</span>
+                  <span className="block text-sm text-slate-600 mb-1">표지용지</span>
                   <input
                     type="text"
                     value={coverPaper}
@@ -888,7 +903,25 @@ export function NewOrderClient() {
                   />
                 </label>
                 <label className="block">
-                  <span className="block text-sm text-slate-600 mb-1">내지</span>
+                  <span className="block text-sm text-slate-600 mb-1">표지인쇄</span>
+                  <input
+                    type="text"
+                    value={coverPrint}
+                    onChange={(e) => setCoverPrint(e.target.value)}
+                    className="input-dark w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+                  />
+                </label>
+                <label className="block">
+                  <span className="block text-sm text-slate-600 mb-1">내지페이지</span>
+                  <input
+                    type="text"
+                    value={innerPages}
+                    onChange={(e) => setInnerPages(e.target.value)}
+                    className="input-dark w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+                  />
+                </label>
+                <label className="block">
+                  <span className="block text-sm text-slate-600 mb-1">내지용지</span>
                   <input
                     type="text"
                     value={innerPaper}
@@ -897,11 +930,11 @@ export function NewOrderClient() {
                   />
                 </label>
                 <label className="block">
-                  <span className="block text-sm text-slate-600 mb-1">도수</span>
+                  <span className="block text-sm text-slate-600 mb-1">내지인쇄</span>
                   <input
                     type="text"
-                    value={printColorSpec}
-                    onChange={(e) => setPrintColorSpec(e.target.value)}
+                    value={innerPrint}
+                    onChange={(e) => setInnerPrint(e.target.value)}
                     className="input-dark w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
                   />
                 </label>

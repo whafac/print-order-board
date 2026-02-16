@@ -20,20 +20,25 @@ export interface SpecRow {
   media_name: string;
   default_vendor: string;
   trim_size: string;
-  pages: string;
+  cover_type: string;
   cover_paper: string;
+  cover_print: string;
+  inner_pages: string;
   inner_paper: string;
-  print_color: string;
+  inner_print: string;
   binding: string;
   finishing: string;
   packaging_delivery: string;
   file_rule: string;
+  // 하위 호환: 기존 데이터용
+  pages?: string;
+  print_color?: string;
 }
 
 const SPEC_HEADERS: (keyof SpecRow)[] = [
-  "media_id", "media_name", "default_vendor", "trim_size", "pages",
-  "cover_paper", "inner_paper", "print_color", "binding", "finishing",
-  "packaging_delivery", "file_rule",
+  "media_id", "media_name", "default_vendor", "trim_size", "cover_type",
+  "cover_paper", "cover_print", "inner_pages", "inner_paper", "inner_print",
+  "binding", "finishing", "packaging_delivery", "file_rule",
 ];
 
 export interface JobRow {
@@ -61,6 +66,29 @@ const JOB_HEADERS: (keyof JobRow)[] = [
   "spec_snapshot", "last_updated_at", "last_updated_by",
   "order_type", "type_spec_snapshot",
 ];
+
+function rowToSpecByHeader(row: string[], header: string[]): SpecRow {
+  const o: Record<string, string> = {};
+  const getVal = (name: string): string => {
+    const col = headerCol(header, name);
+    return col >= 0 ? (row[col] ?? "").toString().trim() : "";
+  };
+  o.media_id = getVal("media_id");
+  o.media_name = getVal("media_name");
+  o.default_vendor = getVal("default_vendor");
+  o.trim_size = getVal("trim_size");
+  o.cover_type = getVal("cover_type");
+  o.cover_paper = getVal("cover_paper");
+  o.cover_print = getVal("cover_print") || getVal("print_color");
+  o.inner_pages = getVal("inner_pages") || getVal("pages");
+  o.inner_paper = getVal("inner_paper");
+  o.inner_print = getVal("inner_print") || getVal("print_color");
+  o.binding = getVal("binding");
+  o.finishing = getVal("finishing");
+  o.packaging_delivery = getVal("packaging_delivery");
+  o.file_rule = getVal("file_rule");
+  return o as unknown as SpecRow;
+}
 
 function rowToSpec(row: string[]): SpecRow {
   const o: Record<string, string> = {};
@@ -107,13 +135,15 @@ export async function getSpecList(): Promise<SpecRow[]> {
   const { sheets, sheetId } = await getSheets();
   const res = await sheets.spreadsheets.values.get({
     spreadsheetId: sheetId,
-    range: `${SPEC_SHEET}!A:L`,
+    range: `${SPEC_SHEET}!A:N`,
   });
   const rows = res.data.values ?? [];
   const start = specDataStart(rows);
+  const header = rows[0] ?? [];
+  const hasHeader = start === 1;
   const list: SpecRow[] = [];
   for (let i = start; i < rows.length; i++) {
-    list.push(rowToSpec(rows[i] ?? []));
+    list.push(hasHeader ? rowToSpecByHeader(rows[i] ?? [], header) : rowToSpec(rows[i] ?? []));
   }
   specCache.data = list;
   specCache.at = now;
@@ -139,7 +169,7 @@ export async function appendSpec(spec: SpecRow): Promise<void> {
   const row = specToRow(spec);
   await sheets.spreadsheets.values.append({
     spreadsheetId: sheetId,
-    range: `${SPEC_SHEET}!A:L`,
+    range: `${SPEC_SHEET}!A:N`,
     valueInputOption: "USER_ENTERED",
     requestBody: { values: [row] },
   });
@@ -150,7 +180,7 @@ export async function updateSpecByMediaId(mediaId: string, updates: Partial<Spec
   const { sheets, sheetId } = await getSheets();
   const res = await sheets.spreadsheets.values.get({
     spreadsheetId: sheetId,
-    range: `${SPEC_SHEET}!A:L`,
+    range: `${SPEC_SHEET}!A:N`,
   });
   const rows = res.data.values ?? [];
   if (rows.length < 1) return false;
@@ -162,10 +192,10 @@ export async function updateSpecByMediaId(mediaId: string, updates: Partial<Spec
   for (let i = dataStart; i < rows.length; i++) {
     const row = rows[i] ?? [];
     if (normalizeCell(row[mediaIdCol]) !== needle) continue;
-    const current = rowToSpec(row);
+    const current = headerCol(header, "media_id") >= 0 ? rowToSpecByHeader(row, header) : rowToSpec(row);
     const merged: SpecRow = { ...current, ...updates };
     const newRow = specToRow(merged);
-    const range = `${SPEC_SHEET}!A${i + 1}:L${i + 1}`;
+    const range = `${SPEC_SHEET}!A${i + 1}:N${i + 1}`;
     await sheets.spreadsheets.values.update({
       spreadsheetId: sheetId,
       range,
