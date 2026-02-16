@@ -1338,6 +1338,84 @@ export function NewOrderClient() {
             </section>
           )}
 
+          {/* 제작금액 계산 (책자만 표시) */}
+          {orderType === "book" && spec && (() => {
+            // 페이지 수 추출 함수
+            function extractPageCount(pageStr: string): number {
+              if (!pageStr) return 0;
+              // "본문 60p", "60p", "60" 등에서 숫자 추출
+              const match = pageStr.match(/(\d+)/);
+              return match ? parseInt(match[1], 10) : 0;
+            }
+
+            // 수량 추출 (기본값 1)
+            const qtyNum = parseInt(qty.trim(), 10) || 1;
+
+            // 표지 페이지 수 계산 (단면: 2페이지, 양면: 4페이지)
+            const coverPageCount = coverPrint.includes("단면") ? 2 : 4;
+            const coverCost = coverPageCount * 300 * qtyNum;
+
+            // 내지 페이지 수 계산
+            const innerPageCount = extractPageCount(innerPages);
+            const innerCost = innerPageCount * 300 * qtyNum;
+
+            // 추가 내지 비용 계산
+            let additionalInnerCost = 0;
+            additionalInnerPages.forEach((item) => {
+              const pageCount = extractPageCount(item.pages);
+              additionalInnerCost += pageCount * 300 * qtyNum;
+            });
+
+            // 제본 비용 (권당)
+            let bindingCost = 0;
+            if (binding.includes("무선제본")) {
+              bindingCost = 2000 * qtyNum;
+            } else if (binding.includes("중철제본")) {
+              bindingCost = 1500 * qtyNum;
+            }
+
+            // 후가공 비용
+            let finishingCost = 0;
+            if (finishingSpec.includes("에폭시")) {
+              // 에폭시는 건당 120,000원 (수량과 무관)
+              finishingCost = 120000;
+            } else if (finishingSpec.includes("코팅")) {
+              // 단면 코팅은 표지 페이지당 500원
+              finishingCost = coverPageCount * 500 * qtyNum;
+            }
+
+            // 총 제작금액 (공급가)
+            const subtotal = coverCost + innerCost + additionalInnerCost + bindingCost + finishingCost;
+            
+            // 부가세 (10%)
+            const vat = Math.floor(subtotal * 0.1);
+            
+            // 총금액
+            const total = subtotal + vat;
+
+            return (
+              <section className="mb-6 rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+                <h2 className="text-sm font-medium text-slate-600 mb-4">제작금액</h2>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-3 border-r border-slate-200 pr-4">
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm text-slate-600">공급가</span>
+                      <span className="text-sm font-medium text-slate-800">{subtotal.toLocaleString()}원</span>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm text-slate-600">부가세</span>
+                      <span className="text-sm font-medium text-slate-800">{vat.toLocaleString()}원</span>
+                    </div>
+                  </div>
+                  <div className="flex flex-col justify-center pl-4">
+                    <div className="text-xs text-slate-500 mb-1">총 결제금액</div>
+                    <div className="text-2xl font-bold text-red-600">{total.toLocaleString()}원</div>
+                  </div>
+                </div>
+              </section>
+            );
+          })()}
+
           <div className="flex gap-3">
             <button
               type="submit"
