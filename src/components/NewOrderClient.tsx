@@ -88,6 +88,53 @@ export function NewOrderClient() {
   }
   const [additionalInnerPages, setAdditionalInnerPages] = useState<AdditionalInnerPage[]>([]);
 
+  // 기본값 저장 (변경 감지용)
+  const [defaultValues, setDefaultValues] = useState<{
+    trimSize: string;
+    coverType: string;
+    coverPaper: string;
+    coverPrint: string;
+    innerPages: string;
+    innerPaper: string;
+    innerPrint: string;
+    binding: string;
+    finishingSpec: string;
+    packagingDelivery: string;
+    fileRule: string;
+    additionalInnerPages: AdditionalInnerPage[];
+  }>({
+    trimSize: "",
+    coverType: "",
+    coverPaper: "",
+    coverPrint: "",
+    innerPages: "",
+    innerPaper: "",
+    innerPrint: "",
+    binding: "",
+    finishingSpec: "",
+    packagingDelivery: "",
+    fileRule: "",
+    additionalInnerPages: [],
+  });
+
+  // 값이 변경되었는지 확인하는 함수
+  function isFieldChanged(fieldName: keyof typeof defaultValues, currentValue: string | AdditionalInnerPage[]): boolean {
+    if (fieldName === "additionalInnerPages") {
+      const current = currentValue as AdditionalInnerPage[];
+      const defaultVal = defaultValues.additionalInnerPages;
+      if (current.length !== defaultVal.length) return true;
+      return current.some((item, idx) => {
+        const defaultItem = defaultVal[idx];
+        if (!defaultItem) return true;
+        return item.type !== defaultItem.type ||
+               item.pages !== defaultItem.pages ||
+               item.paper !== defaultItem.paper ||
+               item.print !== defaultItem.print;
+      });
+    }
+    return (currentValue as string).trim() !== defaultValues[fieldName].trim();
+  }
+
   // 낱장 전용
   const [sheetMediaName, setSheetMediaName] = useState("낱장 인쇄물");
   const [size, setSize] = useState("");
@@ -210,10 +257,12 @@ export function NewOrderClient() {
       setPackagingDelivery(s.packaging_delivery || "");
       setFileRule(s.file_rule || "");
       // 기본 추가 내지 불러오기
+      let defaultAdditionalPages: AdditionalInnerPage[] = [];
       try {
         if (s.additional_inner_pages) {
           const parsed = JSON.parse(s.additional_inner_pages);
           if (Array.isArray(parsed)) {
+            defaultAdditionalPages = parsed;
             setAdditionalInnerPages(parsed);
           } else {
             setAdditionalInnerPages([]);
@@ -224,6 +273,37 @@ export function NewOrderClient() {
       } catch {
         setAdditionalInnerPages([]);
       }
+      // 기본값 저장 (변경 감지용)
+      setDefaultValues({
+        trimSize: s.trim_size || "",
+        coverType: s.cover_type || "",
+        coverPaper: s.cover_paper || "",
+        coverPrint: s.cover_print || s.print_color || "",
+        innerPages: s.inner_pages || s.pages || "",
+        innerPaper: s.inner_paper || "",
+        innerPrint: s.inner_print || s.print_color || "",
+        binding: s.binding || "",
+        finishingSpec: s.finishing || "",
+        packagingDelivery: s.packaging_delivery || "",
+        fileRule: s.file_rule || "",
+        additionalInnerPages: defaultAdditionalPages,
+      });
+    } else {
+      // 매체가 선택되지 않았을 때 기본값 초기화
+      setDefaultValues({
+        trimSize: "",
+        coverType: "",
+        coverPaper: "",
+        coverPrint: "",
+        innerPages: "",
+        innerPaper: "",
+        innerPrint: "",
+        binding: "",
+        finishingSpec: "",
+        packagingDelivery: "",
+        fileRule: "",
+        additionalInnerPages: [],
+      });
     }
   }, [mediaId, specs]);
 
@@ -955,7 +1035,11 @@ export function NewOrderClient() {
                     type="text"
                     value={trimSize}
                     onChange={(e) => setTrimSize(e.target.value)}
-                    className="input-dark w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+                    className={`input-dark w-full rounded-lg border px-3 py-2 text-sm ${
+                      isFieldChanged("trimSize", trimSize)
+                        ? "border-amber-400 bg-amber-50"
+                        : "border-slate-300"
+                    }`}
                   />
                 </label>
                 <label className="block">
@@ -964,7 +1048,11 @@ export function NewOrderClient() {
                     type="text"
                     value={coverType}
                     onChange={(e) => setCoverType(e.target.value)}
-                    className="input-dark w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+                    className={`input-dark w-full rounded-lg border px-3 py-2 text-sm ${
+                      isFieldChanged("coverType", coverType)
+                        ? "border-amber-400 bg-amber-50"
+                        : "border-slate-300"
+                    }`}
                   />
                 </label>
                 <label className="block">
@@ -973,7 +1061,11 @@ export function NewOrderClient() {
                     type="text"
                     value={coverPaper}
                     onChange={(e) => setCoverPaper(e.target.value)}
-                    className="input-dark w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+                    className={`input-dark w-full rounded-lg border px-3 py-2 text-sm ${
+                      isFieldChanged("coverPaper", coverPaper)
+                        ? "border-amber-400 bg-amber-50"
+                        : "border-slate-300"
+                    }`}
                   />
                 </label>
                 <label className="block">
@@ -982,7 +1074,11 @@ export function NewOrderClient() {
                     type="text"
                     value={coverPrint}
                     onChange={(e) => setCoverPrint(e.target.value)}
-                    className="input-dark w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+                    className={`input-dark w-full rounded-lg border px-3 py-2 text-sm ${
+                      isFieldChanged("coverPrint", coverPrint)
+                        ? "border-amber-400 bg-amber-50"
+                        : "border-slate-300"
+                    }`}
                   />
                 </label>
                 <label className="block">
@@ -991,7 +1087,11 @@ export function NewOrderClient() {
                     type="text"
                     value={innerPages}
                     onChange={(e) => setInnerPages(e.target.value)}
-                    className="input-dark w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+                    className={`input-dark w-full rounded-lg border px-3 py-2 text-sm ${
+                      isFieldChanged("innerPages", innerPages)
+                        ? "border-amber-400 bg-amber-50"
+                        : "border-slate-300"
+                    }`}
                   />
                 </label>
                 <label className="block">
@@ -1000,7 +1100,11 @@ export function NewOrderClient() {
                     type="text"
                     value={innerPaper}
                     onChange={(e) => setInnerPaper(e.target.value)}
-                    className="input-dark w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+                    className={`input-dark w-full rounded-lg border px-3 py-2 text-sm ${
+                      isFieldChanged("innerPaper", innerPaper)
+                        ? "border-amber-400 bg-amber-50"
+                        : "border-slate-300"
+                    }`}
                   />
                 </label>
                 <label className="block">
@@ -1009,15 +1113,24 @@ export function NewOrderClient() {
                     type="text"
                     value={innerPrint}
                     onChange={(e) => setInnerPrint(e.target.value)}
-                    className="input-dark w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+                    className={`input-dark w-full rounded-lg border px-3 py-2 text-sm ${
+                      isFieldChanged("innerPrint", innerPrint)
+                        ? "border-amber-400 bg-amber-50"
+                        : "border-slate-300"
+                    }`}
                   />
                 </label>
               </div>
 
               {/* 추가 내지 섹션 */}
-              <div className="mt-4 pt-4 border-t border-slate-200">
+              <div className={`mt-4 pt-4 border-t ${isFieldChanged("additionalInnerPages", additionalInnerPages) ? "border-amber-300" : "border-slate-200"}`}>
                 <div className="flex items-center justify-between mb-3">
-                  <h3 className="text-sm font-medium text-slate-600">추가 내지</h3>
+                  <h3 className={`text-sm font-medium ${isFieldChanged("additionalInnerPages", additionalInnerPages) ? "text-amber-700" : "text-slate-600"}`}>
+                    추가 내지
+                    {isFieldChanged("additionalInnerPages", additionalInnerPages) && (
+                      <span className="ml-2 text-xs text-amber-600">(변경됨)</span>
+                    )}
+                  </h3>
                   <button
                     type="button"
                     onClick={addAdditionalInnerPage}
@@ -1032,62 +1145,100 @@ export function NewOrderClient() {
                   <p className="text-xs text-slate-400 text-center py-4">추가 내지가 없습니다. 위 버튼을 클릭하여 추가하세요.</p>
                 ) : (
                   <div className="space-y-4">
-                    {additionalInnerPages.map((item, index) => (
-                      <div key={index} className="rounded-lg border border-slate-200 bg-slate-50 p-4">
-                        <div className="flex items-center justify-between mb-3">
-                          <span className="text-xs font-medium text-slate-500">추가 내지 {index + 1}</span>
-                          <button
-                            type="button"
-                            onClick={() => removeAdditionalInnerPage(index)}
-                            className="text-xs text-red-600 hover:text-red-700 hover:underline"
-                          >
-                            삭제
-                          </button>
+                    {additionalInnerPages.map((item, index) => {
+                      const defaultItem = defaultValues.additionalInnerPages[index];
+                      const isItemChanged = !defaultItem || 
+                        item.type !== defaultItem.type ||
+                        item.pages !== defaultItem.pages ||
+                        item.paper !== defaultItem.paper ||
+                        item.print !== defaultItem.print;
+                      const isNewItem = index >= defaultValues.additionalInnerPages.length;
+                      
+                      return (
+                        <div
+                          key={index}
+                          className={`rounded-lg border p-4 ${
+                            isItemChanged || isNewItem
+                              ? "border-amber-400 bg-amber-50"
+                              : "border-slate-200 bg-slate-50"
+                          }`}
+                        >
+                          <div className="flex items-center justify-between mb-3">
+                            <span className={`text-xs font-medium ${isItemChanged || isNewItem ? "text-amber-700" : "text-slate-500"}`}>
+                              추가 내지 {index + 1}
+                              {(isItemChanged || isNewItem) && (
+                                <span className="ml-2 text-xs text-amber-600">(변경됨)</span>
+                              )}
+                            </span>
+                            <button
+                              type="button"
+                              onClick={() => removeAdditionalInnerPage(index)}
+                              className="text-xs text-red-600 hover:text-red-700 hover:underline"
+                            >
+                              삭제
+                            </button>
+                          </div>
+                          <div className="grid grid-cols-1 gap-3 text-sm sm:grid-cols-2">
+                            <label className="block">
+                              <span className="block text-xs text-slate-500 mb-1">내지추가유형</span>
+                              <input
+                                type="text"
+                                value={item.type}
+                                onChange={(e) => updateAdditionalInnerPage(index, "type", e.target.value)}
+                                placeholder="면지, 엽서, 별지 등"
+                                className={`input-dark w-full rounded-lg border px-3 py-2 text-sm ${
+                                  isItemChanged || isNewItem
+                                    ? "border-amber-400 bg-white"
+                                    : "border-slate-300"
+                                }`}
+                              />
+                            </label>
+                            <label className="block">
+                              <span className="block text-xs text-slate-500 mb-1">내지추가페이지</span>
+                              <input
+                                type="text"
+                                value={item.pages}
+                                onChange={(e) => updateAdditionalInnerPage(index, "pages", e.target.value)}
+                                placeholder="페이지 수"
+                                className={`input-dark w-full rounded-lg border px-3 py-2 text-sm ${
+                                  isItemChanged || isNewItem
+                                    ? "border-amber-400 bg-white"
+                                    : "border-slate-300"
+                                }`}
+                              />
+                            </label>
+                            <label className="block">
+                              <span className="block text-xs text-slate-500 mb-1">내지추가용지</span>
+                              <input
+                                type="text"
+                                value={item.paper}
+                                onChange={(e) => updateAdditionalInnerPage(index, "paper", e.target.value)}
+                                placeholder="용지 정보"
+                                className={`input-dark w-full rounded-lg border px-3 py-2 text-sm ${
+                                  isItemChanged || isNewItem
+                                    ? "border-amber-400 bg-white"
+                                    : "border-slate-300"
+                                }`}
+                              />
+                            </label>
+                            <label className="block">
+                              <span className="block text-xs text-slate-500 mb-1">내지추가인쇄</span>
+                              <input
+                                type="text"
+                                value={item.print}
+                                onChange={(e) => updateAdditionalInnerPage(index, "print", e.target.value)}
+                                placeholder="인쇄 방법"
+                                className={`input-dark w-full rounded-lg border px-3 py-2 text-sm ${
+                                  isItemChanged || isNewItem
+                                    ? "border-amber-400 bg-white"
+                                    : "border-slate-300"
+                                }`}
+                              />
+                            </label>
+                          </div>
                         </div>
-                        <div className="grid grid-cols-1 gap-3 text-sm sm:grid-cols-2">
-                          <label className="block">
-                            <span className="block text-xs text-slate-500 mb-1">내지추가유형</span>
-                            <input
-                              type="text"
-                              value={item.type}
-                              onChange={(e) => updateAdditionalInnerPage(index, "type", e.target.value)}
-                              placeholder="면지, 엽서, 별지 등"
-                              className="input-dark w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
-                            />
-                          </label>
-                          <label className="block">
-                            <span className="block text-xs text-slate-500 mb-1">내지추가페이지</span>
-                            <input
-                              type="text"
-                              value={item.pages}
-                              onChange={(e) => updateAdditionalInnerPage(index, "pages", e.target.value)}
-                              placeholder="페이지 수"
-                              className="input-dark w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
-                            />
-                          </label>
-                          <label className="block">
-                            <span className="block text-xs text-slate-500 mb-1">내지추가용지</span>
-                            <input
-                              type="text"
-                              value={item.paper}
-                              onChange={(e) => updateAdditionalInnerPage(index, "paper", e.target.value)}
-                              placeholder="용지 정보"
-                              className="input-dark w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
-                            />
-                          </label>
-                          <label className="block">
-                            <span className="block text-xs text-slate-500 mb-1">내지추가인쇄</span>
-                            <input
-                              type="text"
-                              value={item.print}
-                              onChange={(e) => updateAdditionalInnerPage(index, "print", e.target.value)}
-                              placeholder="인쇄 방법"
-                              className="input-dark w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
-                            />
-                          </label>
-                        </div>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 )}
               </div>
@@ -1099,7 +1250,11 @@ export function NewOrderClient() {
                     type="text"
                     value={binding}
                     onChange={(e) => setBinding(e.target.value)}
-                    className="input-dark w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+                    className={`input-dark w-full rounded-lg border px-3 py-2 text-sm ${
+                      isFieldChanged("binding", binding)
+                        ? "border-amber-400 bg-amber-50"
+                        : "border-slate-300"
+                    }`}
                   />
                 </label>
                 <label className="block">
@@ -1108,7 +1263,11 @@ export function NewOrderClient() {
                     type="text"
                     value={finishingSpec}
                     onChange={(e) => setFinishingSpec(e.target.value)}
-                    className="input-dark w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+                    className={`input-dark w-full rounded-lg border px-3 py-2 text-sm ${
+                      isFieldChanged("finishingSpec", finishingSpec)
+                        ? "border-amber-400 bg-amber-50"
+                        : "border-slate-300"
+                    }`}
                   />
                 </label>
                 <label className="block">
@@ -1117,7 +1276,11 @@ export function NewOrderClient() {
                     type="text"
                     value={packagingDelivery}
                     onChange={(e) => setPackagingDelivery(e.target.value)}
-                    className="input-dark w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+                    className={`input-dark w-full rounded-lg border px-3 py-2 text-sm ${
+                      isFieldChanged("packagingDelivery", packagingDelivery)
+                        ? "border-amber-400 bg-amber-50"
+                        : "border-slate-300"
+                    }`}
                   />
                 </label>
                 <label className="block sm:col-span-2">
@@ -1126,7 +1289,11 @@ export function NewOrderClient() {
                     type="text"
                     value={fileRule}
                     onChange={(e) => setFileRule(e.target.value)}
-                    className="input-dark w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+                    className={`input-dark w-full rounded-lg border px-3 py-2 text-sm ${
+                      isFieldChanged("fileRule", fileRule)
+                        ? "border-amber-400 bg-amber-50"
+                        : "border-slate-300"
+                    }`}
                   />
                 </label>
               </div>
