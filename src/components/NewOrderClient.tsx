@@ -78,6 +78,15 @@ export function NewOrderClient() {
   const [packagingDelivery, setPackagingDelivery] = useState("");
   const [fileRule, setFileRule] = useState("");
 
+  // 추가 내지 항목
+  interface AdditionalInnerPage {
+    type: string;
+    pages: string;
+    paper: string;
+    print: string;
+  }
+  const [additionalInnerPages, setAdditionalInnerPages] = useState<AdditionalInnerPage[]>([]);
+
   // 낱장 전용
   const [sheetMediaName, setSheetMediaName] = useState("낱장 인쇄물");
   const [size, setSize] = useState("");
@@ -181,6 +190,7 @@ export function NewOrderClient() {
       setFinishingSpec("");
       setPackagingDelivery("");
       setFileRule("");
+      setAdditionalInnerPages([]);
       return;
     }
     const s = specs.find((x) => x.media_id === mediaId) ?? null;
@@ -198,8 +208,24 @@ export function NewOrderClient() {
       setFinishingSpec(s.finishing || "");
       setPackagingDelivery(s.packaging_delivery || "");
       setFileRule(s.file_rule || "");
+      setAdditionalInnerPages([]);
     }
   }, [mediaId, specs]);
+
+  // 추가 내지 관리 함수
+  function addAdditionalInnerPage() {
+    setAdditionalInnerPages([...additionalInnerPages, { type: "", pages: "", paper: "", print: "" }]);
+  }
+
+  function removeAdditionalInnerPage(index: number) {
+    setAdditionalInnerPages(additionalInnerPages.filter((_, i) => i !== index));
+  }
+
+  function updateAdditionalInnerPage(index: number, field: keyof AdditionalInnerPage, value: string) {
+    const updated = [...additionalInnerPages];
+    updated[index] = { ...updated[index], [field]: value };
+    setAdditionalInnerPages(updated);
+  }
 
   async function logout() {
     await fetch("/api/auth/logout", { method: "POST" });
@@ -335,6 +361,28 @@ export function NewOrderClient() {
       </dl>
     </div>`
         : "";
+    const additionalInnerPagesBlock =
+      orderType === "book" && additionalInnerPages.length > 0
+        ? `
+    <div class="block spec">
+      <h3 class="sec">추가 내지</h3>
+      ${additionalInnerPages
+        .map(
+          (item, idx) => `
+      <div style="margin-bottom: 16px; padding-bottom: 16px; border-bottom: 1px solid #e2e8f0;">
+        <h4 style="font-size: 0.875rem; color: #475569; margin: 0 0 8px; font-weight: 500;">추가 내지 ${idx + 1}</h4>
+        <dl class="grid">
+          <div><dt>유형</dt><dd>${esc(item.type.trim() || "-")}</dd></div>
+          <div><dt>페이지</dt><dd>${esc(item.pages.trim() || "-")}</dd></div>
+          <div><dt>용지</dt><dd>${esc(item.paper.trim() || "-")}</dd></div>
+          <div><dt>인쇄</dt><dd>${esc(item.print.trim() || "-")}</dd></div>
+        </dl>
+      </div>`
+        )
+        .join("")}
+    </div>`
+        : "";
+
     const bookSpecBlock =
       orderType === "book" && spec
         ? `
@@ -353,7 +401,8 @@ export function NewOrderClient() {
         <div><dt>포장·납품</dt><dd>${esc(packagingDelivery.trim() || "-")}</dd></div>
         <div class="full"><dt>파일규격</dt><dd>${esc(fileRule.trim() || "-")}</dd></div>
       </dl>
-    </div>`
+    </div>
+    ${additionalInnerPagesBlock}`
         : "";
     const html = `
 <!DOCTYPE html>
@@ -444,7 +493,7 @@ export function NewOrderClient() {
       if (orderType === "book") {
         payload.media_id = mediaId;
         payload.qty = qty.trim();
-        payload.spec_snapshot = JSON.stringify({
+        const specSnapshot: Record<string, unknown> = {
           media_id: mediaId,
           media_name: spec?.media_name || "",
           default_vendor: spec?.default_vendor || "",
@@ -459,7 +508,17 @@ export function NewOrderClient() {
           finishing: finishingSpec.trim(),
           packaging_delivery: packagingDelivery.trim(),
           file_rule: fileRule.trim(),
-        });
+        };
+        // 추가 내지가 있으면 배열로 추가
+        if (additionalInnerPages.length > 0) {
+          specSnapshot.additional_inner_pages = additionalInnerPages.map((item) => ({
+            type: item.type.trim(),
+            pages: item.pages.trim(),
+            paper: item.paper.trim(),
+            print: item.print.trim(),
+          }));
+        }
+        payload.spec_snapshot = JSON.stringify(specSnapshot);
       } else {
         const kindsCount = Math.max(1, parseInt(kindsCountStr, 10) || 1);
         const sheetsPerKind = Math.max(1, parseInt(sheetsPerKindStr, 10) || 1);
@@ -938,6 +997,87 @@ export function NewOrderClient() {
                     className="input-dark w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
                   />
                 </label>
+              </div>
+
+              {/* 추가 내지 섹션 */}
+              <div className="mt-4 pt-4 border-t border-slate-200">
+                <div className="flex items-center justify-between mb-3">
+                  <h3 className="text-sm font-medium text-slate-600">추가 내지</h3>
+                  <button
+                    type="button"
+                    onClick={addAdditionalInnerPage}
+                    className="flex items-center gap-1 rounded-lg bg-slate-100 px-3 py-1.5 text-sm text-slate-700 hover:bg-slate-200 transition-colors"
+                  >
+                    <span>+</span>
+                    <span>내지 추가</span>
+                  </button>
+                </div>
+
+                {additionalInnerPages.length === 0 ? (
+                  <p className="text-xs text-slate-400 text-center py-4">추가 내지가 없습니다. 위 버튼을 클릭하여 추가하세요.</p>
+                ) : (
+                  <div className="space-y-4">
+                    {additionalInnerPages.map((item, index) => (
+                      <div key={index} className="rounded-lg border border-slate-200 bg-slate-50 p-4">
+                        <div className="flex items-center justify-between mb-3">
+                          <span className="text-xs font-medium text-slate-500">추가 내지 {index + 1}</span>
+                          <button
+                            type="button"
+                            onClick={() => removeAdditionalInnerPage(index)}
+                            className="text-xs text-red-600 hover:text-red-700 hover:underline"
+                          >
+                            삭제
+                          </button>
+                        </div>
+                        <div className="grid grid-cols-1 gap-3 text-sm sm:grid-cols-2">
+                          <label className="block">
+                            <span className="block text-xs text-slate-500 mb-1">내지추가유형</span>
+                            <input
+                              type="text"
+                              value={item.type}
+                              onChange={(e) => updateAdditionalInnerPage(index, "type", e.target.value)}
+                              placeholder="면지, 엽서, 별지 등"
+                              className="input-dark w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+                            />
+                          </label>
+                          <label className="block">
+                            <span className="block text-xs text-slate-500 mb-1">내지추가페이지</span>
+                            <input
+                              type="text"
+                              value={item.pages}
+                              onChange={(e) => updateAdditionalInnerPage(index, "pages", e.target.value)}
+                              placeholder="페이지 수"
+                              className="input-dark w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+                            />
+                          </label>
+                          <label className="block">
+                            <span className="block text-xs text-slate-500 mb-1">내지추가용지</span>
+                            <input
+                              type="text"
+                              value={item.paper}
+                              onChange={(e) => updateAdditionalInnerPage(index, "paper", e.target.value)}
+                              placeholder="용지 정보"
+                              className="input-dark w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+                            />
+                          </label>
+                          <label className="block">
+                            <span className="block text-xs text-slate-500 mb-1">내지추가인쇄</span>
+                            <input
+                              type="text"
+                              value={item.print}
+                              onChange={(e) => updateAdditionalInnerPage(index, "print", e.target.value)}
+                              placeholder="인쇄 방법"
+                              className="input-dark w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+                            />
+                          </label>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              <div className="grid grid-cols-1 gap-3 text-sm sm:grid-cols-2 mt-4">
                 <label className="block">
                   <span className="block text-sm text-slate-600 mb-1">제본</span>
                   <input
