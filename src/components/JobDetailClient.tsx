@@ -350,11 +350,16 @@ export function JobDetailClient({ job }: { job: Job }) {
 
         <section className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
           <h2 className="mb-3 text-sm font-medium text-slate-500">상태 변경</h2>
-          {job.last_updated_by && (
-            <div className="mb-3 text-xs text-slate-500">
-              마지막 수정자: <span className="font-medium text-slate-700">{job.last_updated_by}</span>
+          <div className="mb-3 space-y-1 text-xs text-slate-500">
+            <div>
+              최초 작성한 의뢰자: <span className="font-medium text-slate-700">{job.requester_name || "-"}</span>
             </div>
-          )}
+            {job.last_updated_by && job.last_updated_by !== job.requester_name && (
+              <div>
+                마지막 수정자: <span className="font-medium text-slate-700">{job.last_updated_by}</span>
+              </div>
+            )}
+          </div>
           <div className="flex flex-wrap items-end gap-4">
             <label className="flex flex-col gap-1">
               <span className="text-xs text-slate-500">상태</span>
