@@ -84,7 +84,10 @@ export function JobDetailClient({ job }: { job: Job }) {
     if (job.production_cost && job.production_cost.trim() !== "") {
       const cost = parseInt(job.production_cost.trim(), 10);
       if (!Number.isNaN(cost)) {
-        const subtotal = Math.floor(cost / 1.1); // 부가세 제외
+        // 부동소수점 정밀도 문제 해결: Math.round 사용
+        // 원래 계산: subtotal + Math.floor(subtotal * 0.1) = total
+        // 역산: subtotal = Math.round(total / 1.1)
+        const subtotal = Math.round(cost / 1.1);
         const vat = cost - subtotal;
         return { subtotal, vat, total: cost };
       }
