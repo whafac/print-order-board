@@ -15,14 +15,14 @@ async function verifyToken(token: string): Promise<boolean> {
   }
 }
 
-export async function middleware(request: NextRequest) {
+export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
   const isAuthApi = pathname === "/api/auth/pin" || pathname === "/api/auth/logout";
   if (isAuthApi) return NextResponse.next();
 
   const isApi = pathname.startsWith("/api/");
-  const isProtectedPage = pathname.startsWith("/list") || pathname.startsWith("/jobs") || pathname === "/new" || pathname === "/specs" || pathname === "/";
+  const isProtectedPage = pathname.startsWith("/list") || pathname.startsWith("/jobs") || pathname.startsWith("/new") || pathname.startsWith("/specs") || pathname === "/";
 
   const token = request.cookies.get(AUTH_COOKIE)?.value;
 
