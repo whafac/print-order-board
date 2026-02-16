@@ -300,13 +300,18 @@ function jobId(): string {
 }
 
 function toKoreaTimeString(date: Date): string {
-  const y = date.getFullYear();
-  const m = String(date.getMonth() + 1).padStart(2, "0");
-  const d = String(date.getDate()).padStart(2, "0");
-  const h = String(date.getHours()).padStart(2, "0");
-  const min = String(date.getMinutes()).padStart(2, "0");
-  const s = String(date.getSeconds()).padStart(2, "0");
-  const ms = String(date.getMilliseconds()).padStart(3, "0");
+  // UTC 시간을 KST(+09:00)로 변환
+  const kstOffset = 9 * 60 * 60 * 1000; // 9시간을 밀리초로 변환
+  const kstTime = new Date(date.getTime() + kstOffset);
+  
+  // UTC 기준으로 포맷팅 (KST 시간대 정보는 +09:00으로 표시)
+  const y = kstTime.getUTCFullYear();
+  const m = String(kstTime.getUTCMonth() + 1).padStart(2, "0");
+  const d = String(kstTime.getUTCDate()).padStart(2, "0");
+  const h = String(kstTime.getUTCHours()).padStart(2, "0");
+  const min = String(kstTime.getUTCMinutes()).padStart(2, "0");
+  const s = String(kstTime.getUTCSeconds()).padStart(2, "0");
+  const ms = String(kstTime.getUTCMilliseconds()).padStart(3, "0");
   return `${y}-${m}-${d}T${h}:${min}:${s}.${ms}+09:00`;
 }
 
