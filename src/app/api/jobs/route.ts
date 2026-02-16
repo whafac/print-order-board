@@ -29,6 +29,7 @@ export async function POST(request: NextRequest) {
     file_link?: string;
     changes_note?: string;
     type_spec?: Record<string, unknown>;
+    spec_snapshot?: string;
   };
   try {
     body = await request.json();
@@ -64,7 +65,7 @@ export async function POST(request: NextRequest) {
     media_id = media_id_req;
     media_name = spec.media_name;
     vendor = body.vendor?.trim() || spec.default_vendor;
-    spec_snapshot = JSON.stringify(spec);
+    spec_snapshot = body.spec_snapshot?.trim() || JSON.stringify(spec);
     type_spec_snapshot = "";
   }
 

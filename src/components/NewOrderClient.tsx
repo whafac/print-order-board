@@ -60,6 +60,17 @@ export function NewOrderClient() {
   const [toast, setToast] = useState<"ok" | "err" | null>(null);
   const previewWindowRef = useRef<Window | null>(null);
 
+  // 책자 전용 제작사양 (수정 가능)
+  const [trimSize, setTrimSize] = useState("");
+  const [pages, setPages] = useState("");
+  const [coverPaper, setCoverPaper] = useState("");
+  const [innerPaper, setInnerPaper] = useState("");
+  const [printColorSpec, setPrintColorSpec] = useState("");
+  const [binding, setBinding] = useState("");
+  const [finishingSpec, setFinishingSpec] = useState("");
+  const [packagingDelivery, setPackagingDelivery] = useState("");
+  const [fileRule, setFileRule] = useState("");
+
   // 낱장 전용
   const [sheetMediaName, setSheetMediaName] = useState("낱장 인쇄물");
   const [size, setSize] = useState("");
@@ -152,11 +163,31 @@ export function NewOrderClient() {
     if (!mediaId) {
       setSpec(null);
       setVendor("");
+      setTrimSize("");
+      setPages("");
+      setCoverPaper("");
+      setInnerPaper("");
+      setPrintColorSpec("");
+      setBinding("");
+      setFinishingSpec("");
+      setPackagingDelivery("");
+      setFileRule("");
       return;
     }
     const s = specs.find((x) => x.media_id === mediaId) ?? null;
     setSpec(s);
     setVendor(s?.default_vendor ?? "");
+    if (s) {
+      setTrimSize(s.trim_size || "");
+      setPages(s.pages || "");
+      setCoverPaper(s.cover_paper || "");
+      setInnerPaper(s.inner_paper || "");
+      setPrintColorSpec(s.print_color || "");
+      setBinding(s.binding || "");
+      setFinishingSpec(s.finishing || "");
+      setPackagingDelivery(s.packaging_delivery || "");
+      setFileRule(s.file_rule || "");
+    }
   }, [mediaId, specs]);
 
   async function logout() {
@@ -299,14 +330,15 @@ export function NewOrderClient() {
     <div class="block spec">
       <h3 class="sec">제작 사양 (매체)</h3>
       <dl class="grid">
-        <div><dt>판형</dt><dd>${esc(spec.trim_size || "-")}</dd></div>
-        <div><dt>면수</dt><dd>${esc(spec.pages || "-")}</dd></div>
-        <div><dt>표지</dt><dd>${esc(spec.cover_paper || "-")}</dd></div>
-        <div><dt>내지</dt><dd>${esc(spec.inner_paper || "-")}</dd></div>
-        <div><dt>도수</dt><dd>${esc(spec.print_color || "-")}</dd></div>
-        <div><dt>제본</dt><dd>${esc(spec.binding || "-")}</dd></div>
-        <div><dt>후가공</dt><dd>${esc(spec.finishing || "-")}</dd></div>
-        <div><dt>포장·납품</dt><dd>${esc(spec.packaging_delivery || "-")}</dd></div>
+        <div><dt>판형</dt><dd>${esc(trimSize.trim() || "-")}</dd></div>
+        <div><dt>면수</dt><dd>${esc(pages.trim() || "-")}</dd></div>
+        <div><dt>표지</dt><dd>${esc(coverPaper.trim() || "-")}</dd></div>
+        <div><dt>내지</dt><dd>${esc(innerPaper.trim() || "-")}</dd></div>
+        <div><dt>도수</dt><dd>${esc(printColorSpec.trim() || "-")}</dd></div>
+        <div><dt>제본</dt><dd>${esc(binding.trim() || "-")}</dd></div>
+        <div><dt>후가공</dt><dd>${esc(finishingSpec.trim() || "-")}</dd></div>
+        <div><dt>포장·납품</dt><dd>${esc(packagingDelivery.trim() || "-")}</dd></div>
+        <div class="full"><dt>파일규격</dt><dd>${esc(fileRule.trim() || "-")}</dd></div>
       </dl>
     </div>`
         : "";
@@ -399,6 +431,20 @@ export function NewOrderClient() {
       if (orderType === "book") {
         payload.media_id = mediaId;
         payload.qty = qty.trim();
+        payload.spec_snapshot = JSON.stringify({
+          media_id: mediaId,
+          media_name: spec?.media_name || "",
+          default_vendor: spec?.default_vendor || "",
+          trim_size: trimSize.trim(),
+          pages: pages.trim(),
+          cover_paper: coverPaper.trim(),
+          inner_paper: innerPaper.trim(),
+          print_color: printColorSpec.trim(),
+          binding: binding.trim(),
+          finishing: finishingSpec.trim(),
+          packaging_delivery: packagingDelivery.trim(),
+          file_rule: fileRule.trim(),
+        });
       } else {
         const kindsCount = Math.max(1, parseInt(kindsCountStr, 10) || 1);
         const sheetsPerKind = Math.max(1, parseInt(sheetsPerKindStr, 10) || 1);
@@ -811,19 +857,91 @@ export function NewOrderClient() {
           )}
 
           {orderType === "book" && spec && (
-            <section className="rounded-xl border border-slate-200 bg-slate-50 p-5 shadow-sm">
-              <h2 className="text-sm font-medium text-slate-500 mb-3">자동 사양 (읽기전용)</h2>
-              <dl className="grid grid-cols-1 gap-2 text-sm sm:grid-cols-2">
-                <div><dt className="text-slate-500">판형</dt><dd className="text-slate-800">{spec.trim_size || "-"}</dd></div>
-                <div><dt className="text-slate-500">면수</dt><dd className="text-slate-800">{spec.pages || "-"}</dd></div>
-                <div><dt className="text-slate-500">표지</dt><dd className="text-slate-800">{spec.cover_paper || "-"}</dd></div>
-                <div><dt className="text-slate-500">내지</dt><dd className="text-slate-800">{spec.inner_paper || "-"}</dd></div>
-                <div><dt className="text-slate-500">도수</dt><dd className="text-slate-800">{spec.print_color || "-"}</dd></div>
-                <div><dt className="text-slate-500">제본</dt><dd className="text-slate-800">{spec.binding || "-"}</dd></div>
-                <div><dt className="text-slate-500">후가공</dt><dd className="text-slate-800">{spec.finishing || "-"}</dd></div>
-                <div><dt className="text-slate-500">포장·납품</dt><dd className="text-slate-800">{spec.packaging_delivery || "-"}</dd></div>
-                <div className="sm:col-span-2"><dt className="text-slate-500">파일규격</dt><dd className="text-slate-800">{spec.file_rule || "-"}</dd></div>
-              </dl>
+            <section className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm space-y-4">
+              <h2 className="text-sm font-medium text-slate-500">제작 사양</h2>
+              <div className="grid grid-cols-1 gap-3 text-sm sm:grid-cols-2">
+                <label className="block">
+                  <span className="block text-sm text-slate-600 mb-1">판형</span>
+                  <input
+                    type="text"
+                    value={trimSize}
+                    onChange={(e) => setTrimSize(e.target.value)}
+                    className="input-dark w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+                  />
+                </label>
+                <label className="block">
+                  <span className="block text-sm text-slate-600 mb-1">면수</span>
+                  <input
+                    type="text"
+                    value={pages}
+                    onChange={(e) => setPages(e.target.value)}
+                    className="input-dark w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+                  />
+                </label>
+                <label className="block">
+                  <span className="block text-sm text-slate-600 mb-1">표지</span>
+                  <input
+                    type="text"
+                    value={coverPaper}
+                    onChange={(e) => setCoverPaper(e.target.value)}
+                    className="input-dark w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+                  />
+                </label>
+                <label className="block">
+                  <span className="block text-sm text-slate-600 mb-1">내지</span>
+                  <input
+                    type="text"
+                    value={innerPaper}
+                    onChange={(e) => setInnerPaper(e.target.value)}
+                    className="input-dark w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+                  />
+                </label>
+                <label className="block">
+                  <span className="block text-sm text-slate-600 mb-1">도수</span>
+                  <input
+                    type="text"
+                    value={printColorSpec}
+                    onChange={(e) => setPrintColorSpec(e.target.value)}
+                    className="input-dark w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+                  />
+                </label>
+                <label className="block">
+                  <span className="block text-sm text-slate-600 mb-1">제본</span>
+                  <input
+                    type="text"
+                    value={binding}
+                    onChange={(e) => setBinding(e.target.value)}
+                    className="input-dark w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+                  />
+                </label>
+                <label className="block">
+                  <span className="block text-sm text-slate-600 mb-1">후가공</span>
+                  <input
+                    type="text"
+                    value={finishingSpec}
+                    onChange={(e) => setFinishingSpec(e.target.value)}
+                    className="input-dark w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+                  />
+                </label>
+                <label className="block">
+                  <span className="block text-sm text-slate-600 mb-1">포장·납품</span>
+                  <input
+                    type="text"
+                    value={packagingDelivery}
+                    onChange={(e) => setPackagingDelivery(e.target.value)}
+                    className="input-dark w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+                  />
+                </label>
+                <label className="block sm:col-span-2">
+                  <span className="block text-sm text-slate-600 mb-1">파일규격</span>
+                  <input
+                    type="text"
+                    value={fileRule}
+                    onChange={(e) => setFileRule(e.target.value)}
+                    className="input-dark w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+                  />
+                </label>
+              </div>
             </section>
           )}
 
