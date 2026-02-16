@@ -82,7 +82,7 @@ export function JobDetailClient({ job }: { job: Job }) {
     let additionalInnerCost = 0;
     const additionalPages = spec.additional_inner_pages;
     if (Array.isArray(additionalPages)) {
-      additionalPages.forEach((item: Record<string, unknown>) => {
+      (additionalPages as Record<string, unknown>[]).forEach((item) => {
         const pageCount = extractPageCount(String(item.pages || ""));
         additionalInnerCost += pageCount * 300 * qtyNum;
       });
