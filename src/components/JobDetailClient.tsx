@@ -37,6 +37,29 @@ function setStoredEditor(name: string) {
   localStorage.setItem(EDITOR_KEY, name);
 }
 
+function formatCreatedAt(iso: string | undefined): string {
+  if (!iso) return "-";
+  
+  // ISO 8601 형식 파싱 (KST +09:00 또는 UTC Z 형식 지원)
+  // 예: "2026-02-16T14:16:15.677+09:00" 또는 "2026-02-16T14:16:15.677Z"
+  const match = iso.match(/^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})(?:\.\d+)?([+-]\d{2}:\d{2}|Z)?/);
+  
+  if (match) {
+    const [, year, month, day, hour, minute] = match;
+    return `${year}-${month}-${day} ${hour}:${minute}`;
+  }
+  
+  // 파싱 실패 시 기존 방식으로 폴백
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return iso.slice(0, 10) || "-";
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  const h = String(d.getHours()).padStart(2, "0");
+  const min = String(d.getMinutes()).padStart(2, "0");
+  return `${y}-${m}-${day} ${h}:${min}`;
+}
+
 export function JobDetailClient({ job }: { job: Job }) {
   const router = useRouter();
   const [status, setStatus] = useState(job.status);
@@ -209,7 +232,7 @@ export function JobDetailClient({ job }: { job: Job }) {
           <h2 className="mb-3 text-sm font-medium text-slate-500">기본정보</h2>
           <dl className="grid grid-cols-1 gap-2 text-sm sm:grid-cols-2">
             <div><dt className="text-slate-500">의뢰자</dt><dd className="text-slate-800">{job.requester_name || "-"}</dd></div>
-            <div><dt className="text-slate-500">생성일</dt><dd className="text-slate-800">{job.created_at ? job.created_at.slice(0, 10) : "-"}</dd></div>
+            <div><dt className="text-slate-500">생성일</dt><dd className="text-slate-800">{formatCreatedAt(job.created_at)}</dd></div>
             <div><dt className="text-slate-500">매체</dt><dd className="text-slate-800">{job.media_name || "-"}</dd></div>
             <div><dt className="text-slate-500">출력실</dt><dd className="text-slate-800">{job.vendor || "-"}</dd></div>
             <div><dt className="text-slate-500">납기</dt><dd className="text-slate-800">{job.due_date ? job.due_date.slice(0, 10) : "-"}</dd></div>
@@ -327,6 +350,11 @@ export function JobDetailClient({ job }: { job: Job }) {
 
         <section className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
           <h2 className="mb-3 text-sm font-medium text-slate-500">상태 변경</h2>
+          {job.last_updated_by && (
+            <div className="mb-3 text-xs text-slate-500">
+              마지막 수정자: <span className="font-medium text-slate-700">{job.last_updated_by}</span>
+            </div>
+          )}
           <div className="flex flex-wrap items-end gap-4">
             <label className="flex flex-col gap-1">
               <span className="text-xs text-slate-500">상태</span>

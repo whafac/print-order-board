@@ -145,7 +145,7 @@ export function NewOrderClient() {
   const [printColor, setPrintColor] = useState<"먹1도" | "컬러">("컬러");
   const [finishing, setFinishing] = useState<Record<string, boolean>>({ "없음": true });
   const [finishingEtc, setFinishingEtc] = useState("");
-  const [cutting, setCutting] = useState<"필요없음" | "정재단">("필요없음");
+  const [cutting, setCutting] = useState<"필요없음" | "정재단">("정재단");
   const [kindsCountStr, setKindsCountStr] = useState("1");
   const [sheetsPerKindStr, setSheetsPerKindStr] = useState("1");
   const [extraRequest, setExtraRequest] = useState("");
