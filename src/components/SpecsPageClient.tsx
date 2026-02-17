@@ -207,10 +207,11 @@ export function SpecsPageClient() {
   return (
     <>
       <header className="sticky top-0 z-20 border-b border-slate-200 bg-white/95 backdrop-blur">
-        <div className="mx-auto flex max-w-4xl items-center justify-between px-4 py-3">
-          {/* 데스크탑: 탭 네비게이션 */}
-          <div className="hidden md:flex items-center gap-4">
+        <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-3">
+          {/* 데스크탑: 탭 네비게이션 (고정 위치) */}
+          <div className="hidden md:flex items-center gap-2">
             <Link href="/list" className="text-base font-medium text-slate-600 hover:text-slate-800">제작 의뢰 관리</Link>
+            <span className="text-slate-400">|</span>
             <Link href="/specs" className="text-base font-medium text-blue-600">매체 사양 관리</Link>
           </div>
           
@@ -247,16 +248,16 @@ export function SpecsPageClient() {
       </header>
 
       {/* 모바일 슬라이드 메뉴 */}
-      {/* 배경 오버레이 (투명도 70%) */}
+      {/* 배경 블러 처리 */}
       <div
-        className={`fixed inset-0 bg-black/70 z-30 md:hidden transition-opacity duration-300 ${
+        className={`fixed inset-0 backdrop-blur-sm z-30 md:hidden transition-opacity duration-300 ${
           mobileMenuOpen ? "opacity-100" : "opacity-0 pointer-events-none"
         }`}
         onClick={() => setMobileMenuOpen(false)}
       />
-      {/* 슬라이드 메뉴 (화면의 1/3, 투명도 70%) */}
+      {/* 슬라이드 메뉴 (화면의 50%, slate-800 투명도 70%) */}
       <div
-        className={`fixed left-0 top-0 bottom-0 w-1/3 bg-white/70 backdrop-blur-sm shadow-xl z-40 md:hidden transform transition-transform duration-300 ease-in-out ${
+        className={`fixed left-0 top-0 bottom-0 w-1/2 bg-slate-800/70 backdrop-blur-sm shadow-xl z-40 md:hidden transform transition-transform duration-300 ease-in-out ${
           mobileMenuOpen ? "translate-x-0" : "-translate-x-full"
         }`}
       >
@@ -266,7 +267,7 @@ export function SpecsPageClient() {
             <button
               type="button"
               onClick={() => setMobileMenuOpen(false)}
-              className="p-2 text-slate-600 hover:text-slate-800"
+              className="p-2 text-white hover:text-slate-200"
               aria-label="메뉴 닫기"
             >
               <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -277,14 +278,14 @@ export function SpecsPageClient() {
           <Link
             href="/list"
             onClick={() => setMobileMenuOpen(false)}
-            className="block text-base font-medium text-slate-600 hover:text-slate-800 py-2"
+            className="block text-base font-medium text-white/80 hover:text-white py-2"
           >
             제작 의뢰 관리
           </Link>
           <Link
             href="/specs"
             onClick={() => setMobileMenuOpen(false)}
-            className="block text-base font-medium text-blue-600 py-2"
+            className="block text-base font-medium text-white py-2"
           >
             매체 사양 관리
           </Link>
