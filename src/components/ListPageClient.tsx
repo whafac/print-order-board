@@ -162,7 +162,7 @@ export function ListPageClient() {
   const [mediaId, setMediaId] = useState("");
   const [q, setQ] = useState("");
   const [loading, setLoading] = useState(true);
-  const [summary, setSummary] = useState({ total: 0, due7: 0, done: 0 });
+  const [summary, setSummary] = useState({ total: 0, received: 0, due7: 0, done: 0 });
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   async function logout() {
@@ -186,6 +186,7 @@ export function ListPageClient() {
       const all = Array.isArray(jobsData) ? jobsData : [];
       setSummary({
         total: all.length,
+        received: all.filter((j: Job) => j.status === "접수").length,
         due7: all.filter((j: Job) => j.status === "진행").length,
         done: all.filter((j: Job) => j.status === "검수완료" || j.status === "완료").length,
       });
@@ -292,10 +293,15 @@ export function ListPageClient() {
         {/* 모바일: 하나의 박스에 통합 */}
         <div className="mb-6 sm:hidden">
           <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
-            <div className="flex items-center justify-between gap-4">
+            <div className="flex items-center justify-between gap-2">
               <div className="flex-1 text-center">
                 <p className="text-xs text-slate-500 mb-1">이번 달 전체</p>
                 <p className="text-xl font-semibold text-slate-800">{summary.total}</p>
+              </div>
+              <span className="text-slate-300">|</span>
+              <div className="flex-1 text-center">
+                <p className="text-xs text-slate-500 mb-1">접수</p>
+                <p className="text-xl font-semibold text-sky-600">{summary.received}</p>
               </div>
               <span className="text-slate-300">|</span>
               <div className="flex-1 text-center">
@@ -311,11 +317,15 @@ export function ListPageClient() {
           </div>
         </div>
         
-        {/* 데스크탑: 3개의 카드 */}
-        <div className="mb-6 hidden sm:grid grid-cols-3 gap-4">
+        {/* 데스크탑: 4개의 카드 */}
+        <div className="mb-6 hidden sm:grid grid-cols-4 gap-4">
           <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
             <p className="text-sm text-slate-500">이번 달 전체</p>
             <p className="text-2xl font-semibold text-slate-800">{summary.total}</p>
+          </div>
+          <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+            <p className="text-sm text-slate-500">접수</p>
+            <p className="text-2xl font-semibold text-sky-600">{summary.received}</p>
           </div>
           <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
             <p className="text-sm text-slate-500">진행중</p>
