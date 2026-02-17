@@ -163,7 +163,8 @@ export function NewOrderClient() {
   const paperColorWrapperRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    setRequesterName(getStoredRequester());
+    // 의뢰자 이름은 페이지 로드 시 빈칸으로 시작 (이전 값 자동 입력 방지)
+    // setRequesterName(getStoredRequester()); // 제거: 여러 사용자가 이전 의뢰자 이름을 그대로 사용하는 오류 방지
     fetch("/api/spec")
       .then((r) => r.json())
       .then((data) => Array.isArray(data) && setSpecs(data))
