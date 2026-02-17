@@ -289,17 +289,40 @@ export function ListPageClient() {
       </div>
 
       <div className="mx-auto max-w-6xl px-4 py-6">
-        <div className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-3">
+        {/* 모바일: 하나의 박스에 통합 */}
+        <div className="mb-6 sm:hidden">
+          <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+            <div className="flex items-center justify-between gap-4">
+              <div className="flex-1 text-center">
+                <p className="text-xs text-slate-500 mb-1">이번 달 전체</p>
+                <p className="text-xl font-semibold text-slate-800">{summary.total}</p>
+              </div>
+              <span className="text-slate-300">|</span>
+              <div className="flex-1 text-center">
+                <p className="text-xs text-slate-500 mb-1">진행중</p>
+                <p className="text-xl font-semibold text-amber-600">{summary.due7}</p>
+              </div>
+              <span className="text-slate-300">|</span>
+              <div className="flex-1 text-center">
+                <p className="text-xs text-slate-500 mb-1">완료</p>
+                <p className="text-xl font-semibold text-emerald-600">{summary.done}</p>
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        {/* 데스크탑: 3개의 카드 */}
+        <div className="mb-6 hidden sm:grid grid-cols-3 gap-4">
           <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
             <p className="text-sm text-slate-500">이번 달 전체</p>
             <p className="text-2xl font-semibold text-slate-800">{summary.total}</p>
           </div>
           <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
-            <p className="text-sm text-slate-500">진행상태인 건수</p>
+            <p className="text-sm text-slate-500">진행중</p>
             <p className="text-2xl font-semibold text-amber-600">{summary.due7}</p>
           </div>
           <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
-            <p className="text-sm text-slate-500">완료상태인 건</p>
+            <p className="text-sm text-slate-500">완료</p>
             <p className="text-2xl font-semibold text-emerald-600">{summary.done}</p>
           </div>
         </div>
