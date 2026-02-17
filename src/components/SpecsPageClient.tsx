@@ -255,9 +255,9 @@ export function SpecsPageClient() {
         }`}
         onClick={() => setMobileMenuOpen(false)}
       />
-      {/* 슬라이드 메뉴 (화면의 50%, slate-800 투명도 70%) */}
+      {/* 슬라이드 메뉴 (화면의 50%, 더 어두운 배경 투명도 70%) */}
       <div
-        className={`fixed left-0 top-0 bottom-0 w-1/2 bg-slate-800/70 backdrop-blur-sm shadow-xl z-40 md:hidden transform transition-transform duration-300 ease-in-out ${
+        className={`fixed left-0 top-0 bottom-0 w-1/2 bg-slate-900/70 backdrop-blur-sm shadow-xl z-40 md:hidden transform transition-transform duration-300 ease-in-out ${
           mobileMenuOpen ? "translate-x-0" : "-translate-x-full"
         }`}
       >
@@ -278,14 +278,14 @@ export function SpecsPageClient() {
           <Link
             href="/list"
             onClick={() => setMobileMenuOpen(false)}
-            className="block text-base font-medium text-white/80 hover:text-white py-2"
+            className="block text-base font-medium text-white/70 hover:text-white py-2"
           >
             제작 의뢰 관리
           </Link>
           <Link
             href="/specs"
             onClick={() => setMobileMenuOpen(false)}
-            className="block text-base font-medium text-white py-2"
+            className="block text-base font-medium text-blue-400 py-2"
           >
             매체 사양 관리
           </Link>
