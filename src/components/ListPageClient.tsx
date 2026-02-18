@@ -228,13 +228,31 @@ export function ListPageClient() {
           <div className="hidden md:flex items-center gap-2">
             <Link href="/list" className="text-base font-medium text-blue-600">제작 의뢰 관리</Link>
             <span className="text-slate-400">|</span>
-            <Link href="/specs" className="text-base font-medium text-slate-600 hover:text-slate-800">매체 사양 관리</Link>
-            {userRole === "admin" && (
-              <>
-                <span className="text-slate-400">|</span>
-                <Link href="/vendors" className="text-base font-medium text-slate-600 hover:text-slate-800">제작업체 관리</Link>
-              </>
-            )}
+            <Link 
+              href="/specs" 
+              className="text-base font-medium text-slate-600 hover:text-slate-800"
+              onClick={(e) => {
+                if (userRole === "vendor") {
+                  e.preventDefault();
+                  alert("접근 권한이 없습니다. 관리자에게 문의해 주세요.");
+                }
+              }}
+            >
+              매체 사양 관리
+            </Link>
+            <span className="text-slate-400">|</span>
+            <Link 
+              href="/vendors" 
+              className="text-base font-medium text-slate-600 hover:text-slate-800"
+              onClick={(e) => {
+                if (userRole === "vendor") {
+                  e.preventDefault();
+                  alert("접근 권한이 없습니다. 관리자에게 문의해 주세요.");
+                }
+              }}
+            >
+              제작 업체 관리
+            </Link>
           </div>
           
           {/* 모바일: 햄버거 버튼 */}
@@ -316,20 +334,34 @@ export function ListPageClient() {
           </Link>
           <Link
             href="/specs"
-            onClick={() => setMobileMenuOpen(false)}
+            onClick={(e) => {
+              if (userRole === "vendor") {
+                e.preventDefault();
+                setMobileMenuOpen(false);
+                alert("접근 권한이 없습니다. 관리자에게 문의해 주세요.");
+                return;
+              }
+              setMobileMenuOpen(false);
+            }}
             className="block text-base font-medium text-white/70 hover:text-white py-2"
           >
             매체 사양 관리
           </Link>
-          {userRole === "admin" && (
-            <Link
-              href="/vendors"
-              onClick={() => setMobileMenuOpen(false)}
-              className="block text-base font-medium text-white/70 hover:text-white py-2"
-            >
-              제작업체 관리
-            </Link>
-          )}
+          <Link
+            href="/vendors"
+            onClick={(e) => {
+              if (userRole === "vendor") {
+                e.preventDefault();
+                setMobileMenuOpen(false);
+                alert("접근 권한이 없습니다. 관리자에게 문의해 주세요.");
+                return;
+              }
+              setMobileMenuOpen(false);
+            }}
+            className="block text-base font-medium text-white/70 hover:text-white py-2"
+          >
+            제작 업체 관리
+          </Link>
         </div>
       </div>
 
