@@ -271,6 +271,12 @@ export function ListPageClient() {
 
   const vendors = Array.from(new Set(jobs.map((j) => j.vendor).filter(Boolean))).sort();
 
+  // 합계금액 계산
+  const totalAmount = jobs.reduce((sum, job) => {
+    const amount = getTotalAmount(job);
+    return sum + (amount !== null ? amount : 0);
+  }, 0);
+
   return (
     <>
       <header className="sticky top-0 z-20 border-b border-slate-200 bg-white/95 backdrop-blur">
@@ -620,6 +626,18 @@ export function ListPageClient() {
                       </tr>
                     ))}
                   </tbody>
+                  <tfoot>
+                    <tr className="border-t-2 border-slate-300 bg-slate-50">
+                      <td colSpan={8} className="px-4 py-3 text-right font-semibold text-slate-700">
+                        합계
+                      </td>
+                      <td className="px-4 py-3 text-right">
+                        <span className="font-bold text-lg text-slate-900">
+                          {totalAmount.toLocaleString()}원
+                        </span>
+                      </td>
+                    </tr>
+                  </tfoot>
                 </table>
               </div>
 
@@ -687,6 +705,17 @@ export function ListPageClient() {
                     </div>
                   </div>
                 ))}
+                {/* 모바일: 합계 섹션 */}
+                {jobs.length > 0 && (
+                  <div className="p-4 border-t-2 border-slate-300 bg-slate-50">
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm font-semibold text-slate-700">합계</span>
+                      <span className="text-lg font-bold text-slate-900">
+                        {totalAmount.toLocaleString()}원
+                      </span>
+                    </div>
+                  </div>
+                )}
               </div>
             </>
           )}
