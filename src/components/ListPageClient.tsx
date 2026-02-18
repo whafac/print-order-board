@@ -454,6 +454,9 @@ export function ListPageClient() {
                           {job.order_type === "sheet" && (
                             <span className="ml-1.5 rounded bg-slate-200 px-1.5 py-0.5 text-xs text-slate-600">낱장</span>
                           )}
+                          {job.order_type === "book" && (
+                            <span className="ml-1.5 rounded bg-slate-200 px-1.5 py-0.5 text-xs text-slate-600">책자</span>
+                          )}
                         </td>
                         <td className="px-4 py-2 text-slate-700">{job.qty || "-"}</td>
                         <td className="px-4 py-2 text-slate-700">{job.vendor || "-"}</td>
@@ -506,6 +509,9 @@ export function ListPageClient() {
                           </span>
                           {job.order_type === "sheet" && (
                             <span className="rounded bg-slate-200 px-1.5 py-0.5 text-xs text-slate-600 whitespace-nowrap">낱장</span>
+                          )}
+                          {job.order_type === "book" && (
+                            <span className="rounded bg-slate-200 px-1.5 py-0.5 text-xs text-slate-600 whitespace-nowrap">책자</span>
                           )}
                         </div>
                         <h3 className="text-sm font-medium text-slate-800 truncate">{job.media_name || "-"}</h3>
