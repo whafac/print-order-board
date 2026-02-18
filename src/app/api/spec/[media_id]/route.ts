@@ -1,11 +1,18 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSpecByMediaId, updateSpecByMediaId } from "@/lib/sheets";
 import type { SpecRow } from "@/lib/sheets";
+import { getUserRole } from "@/lib/auth";
 
 export async function GET(
   _request: NextRequest,
   { params }: { params: Promise<{ media_id: string }> }
 ) {
+  // 제작업체는 매체사양관리 접근 불가
+  const role = await getUserRole();
+  if (role === "vendor") {
+    return NextResponse.json({ error: "접근 권한이 없습니다. 매체사양관리는 의뢰자와 관리자만 접근할 수 있습니다." }, { status: 403 });
+  }
+
   const { media_id } = await params;
   try {
     const spec = await getSpecByMediaId(media_id);
@@ -21,6 +28,12 @@ export async function PATCH(
   request: NextRequest,
   { params }: { params: Promise<{ media_id: string }> }
 ) {
+  // 제작업체는 매체사양관리 접근 불가
+  const role = await getUserRole();
+  if (role === "vendor") {
+    return NextResponse.json({ error: "접근 권한이 없습니다. 매체사양관리는 의뢰자와 관리자만 접근할 수 있습니다." }, { status: 403 });
+  }
+
   const { media_id } = await params;
   let body: Partial<SpecRow>;
   try {

@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 
 interface AdditionalInnerPage {
   type: string;
@@ -67,6 +68,7 @@ const emptySpec = (): Spec => ({
 });
 
 export function SpecsPageClient() {
+  const router = useRouter();
   const [specs, setSpecs] = useState<Spec[]>([]);
   const [loading, setLoading] = useState(true);
   const [sheetError, setSheetError] = useState<string | null>(null);
@@ -78,6 +80,25 @@ export function SpecsPageClient() {
   const [additionalInnerPages, setAdditionalInnerPages] = useState<AdditionalInnerPage[]>([]);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
+  // 권한 체크: 제작업체는 접근 불가
+  useEffect(() => {
+    async function checkPermission() {
+      try {
+        const res = await fetch("/api/auth/role");
+        const data = await res.json();
+        if (res.ok && data.role === "vendor") {
+          // 제작업체는 매체사양관리 접근 불가
+          alert("접근 권한이 없습니다. 매체사양관리는 의뢰자와 관리자만 접근할 수 있습니다.");
+          router.push("/list");
+          return;
+        }
+      } catch {
+        // 역할 확인 실패 시 계속 진행 (하위 호환)
+      }
+    }
+    checkPermission();
+  }, [router]);
+
   async function load() {
     setLoading(true);
     setSheetError(null);
@@ -85,6 +106,12 @@ export function SpecsPageClient() {
       const res = await fetch("/api/spec");
       const data = await res.json();
       if (!res.ok) {
+        // 403 에러인 경우 권한 없음
+        if (res.status === 403) {
+          alert(data.error || "접근 권한이 없습니다.");
+          router.push("/list");
+          return;
+        }
         setSheetError(data.error ?? "Google 시트 연결을 확인해 주세요. .env.local에 GOOGLE_SHEET_ID 등이 설정되어 있어야 합니다.");
         setSpecs([]);
         return;
