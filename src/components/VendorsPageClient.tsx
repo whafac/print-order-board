@@ -17,6 +17,7 @@ export function VendorsPageClient() {
   const [vendors, setVendors] = useState<Vendor[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   async function load() {
     setLoading(true);
@@ -77,7 +78,8 @@ export function VendorsPageClient() {
     <>
       <header className="sticky top-0 z-20 border-b border-slate-200 bg-white/95 backdrop-blur">
         <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-3">
-          <div className="flex items-center gap-2">
+          {/* 데스크탑: 탭 네비게이션 */}
+          <div className="hidden md:flex items-center gap-2">
             <Link href="/list" className="text-base font-medium text-slate-600 hover:text-slate-800">
               제작 의뢰 관리
             </Link>
@@ -89,6 +91,25 @@ export function VendorsPageClient() {
             <Link href="/vendors" className="text-base font-medium text-blue-600">
               제작업체 관리
             </Link>
+          </div>
+
+          {/* 모바일: 햄버거 버튼 */}
+          <div className="md:hidden flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+              className="p-2 text-slate-600 hover:text-slate-800"
+              aria-label="메뉴 열기"
+            >
+              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                {mobileMenuOpen ? (
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                ) : (
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+                )}
+              </svg>
+            </button>
+            <span className="text-base font-medium text-blue-600">제작업체 관리</span>
           </div>
 
           <div className="flex items-center gap-3">
@@ -103,6 +124,58 @@ export function VendorsPageClient() {
           </div>
         </div>
       </header>
+
+      {/* 모바일 슬라이드 메뉴 */}
+      {/* 배경 블러 처리 */}
+      <div
+        className={`fixed inset-0 backdrop-blur-sm z-30 md:hidden transition-opacity duration-300 ${
+          mobileMenuOpen ? "opacity-100" : "opacity-0 pointer-events-none"
+        }`}
+        onClick={() => setMobileMenuOpen(false)}
+      />
+      {/* 슬라이드 메뉴 */}
+      <div
+        className={`fixed left-0 top-0 bottom-0 w-1/2 bg-slate-900/70 backdrop-blur-sm shadow-xl z-40 md:hidden transform transition-transform duration-300 ease-in-out ${
+          mobileMenuOpen ? "translate-x-0" : "-translate-x-full"
+        }`}
+      >
+        <div className="p-4 space-y-4">
+          {/* 닫기 버튼 */}
+          <div className="flex justify-end mb-2">
+            <button
+              type="button"
+              onClick={() => setMobileMenuOpen(false)}
+              className="p-2 text-white hover:text-slate-200"
+              aria-label="메뉴 닫기"
+            >
+              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
+          <Link
+            href="/list"
+            onClick={() => setMobileMenuOpen(false)}
+            className="block text-base font-medium text-white/70 hover:text-white py-2"
+          >
+            제작 의뢰 관리
+          </Link>
+          <Link
+            href="/specs"
+            onClick={() => setMobileMenuOpen(false)}
+            className="block text-base font-medium text-white/70 hover:text-white py-2"
+          >
+            매체 사양 관리
+          </Link>
+          <Link
+            href="/vendors"
+            onClick={() => setMobileMenuOpen(false)}
+            className="block text-base font-medium text-blue-400 py-2"
+          >
+            제작업체 관리
+          </Link>
+        </div>
+      </div>
 
       <div className="mx-auto max-w-6xl px-4 py-6">
         <div className="mb-6 flex items-center justify-between">
@@ -128,30 +201,87 @@ export function VendorsPageClient() {
           ) : vendors.length === 0 ? (
             <div className="p-8 text-center text-slate-500">등록된 업체가 없습니다.</div>
           ) : (
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-slate-200 bg-slate-50 text-left text-slate-600">
-                  <th className="px-4 py-3 font-medium">업체 ID</th>
-                  <th className="px-4 py-3 font-medium">업체명</th>
-                  <th className="px-4 py-3 font-medium">상태</th>
-                  <th className="px-4 py-3 font-medium">생성일</th>
-                  <th className="px-4 py-3 font-medium">수정일</th>
-                  <th className="px-4 py-3 font-medium text-right">관리</th>
-                </tr>
-              </thead>
-              <tbody>
+            <>
+              {/* 데스크탑: 테이블 형태 */}
+              <div className="hidden md:block overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b border-slate-200 bg-slate-50 text-left text-slate-600">
+                      <th className="px-4 py-3 font-medium">업체 ID</th>
+                      <th className="px-4 py-3 font-medium">업체명</th>
+                      <th className="px-4 py-3 font-medium">상태</th>
+                      <th className="px-4 py-3 font-medium">생성일</th>
+                      <th className="px-4 py-3 font-medium">수정일</th>
+                      <th className="px-4 py-3 font-medium text-right">관리</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {vendors.map((vendor) => (
+                      <tr
+                        key={vendor.vendor_id}
+                        className="border-b border-slate-100 hover:bg-slate-50"
+                      >
+                        <td className="px-4 py-3 text-slate-700 font-mono text-xs">
+                          {vendor.vendor_id}
+                        </td>
+                        <td className="px-4 py-3 text-slate-700 font-medium">
+                          {vendor.vendor_name}
+                        </td>
+                        <td className="px-4 py-3">
+                          <span
+                            className={`inline-block rounded-full px-2 py-0.5 text-xs font-medium ${
+                              vendor.is_active === "TRUE" || vendor.is_active === "true"
+                                ? "bg-emerald-100 text-emerald-800"
+                                : "bg-slate-100 text-slate-600"
+                            }`}
+                          >
+                            {vendor.is_active === "TRUE" || vendor.is_active === "true"
+                              ? "활성"
+                              : "비활성"}
+                          </span>
+                        </td>
+                        <td className="px-4 py-3 text-slate-600 text-xs">
+                          {vendor.created_at
+                            ? vendor.created_at.slice(0, 10).replace("T", " ")
+                            : "-"}
+                        </td>
+                        <td className="px-4 py-3 text-slate-600 text-xs">
+                          {vendor.updated_at
+                            ? vendor.updated_at.slice(0, 10).replace("T", " ")
+                            : "-"}
+                        </td>
+                        <td className="px-4 py-3 text-right">
+                          <div className="flex items-center justify-end gap-2">
+                            <Link
+                              href={`/vendors/${vendor.vendor_id}`}
+                              className="rounded bg-blue-600 px-3 py-1 text-xs text-white hover:bg-blue-700"
+                            >
+                              수정
+                            </Link>
+                            <button
+                              type="button"
+                              onClick={() => handleDelete(vendor.vendor_id, vendor.vendor_name)}
+                              className="rounded bg-red-600 px-3 py-1 text-xs text-white hover:bg-red-700"
+                            >
+                              삭제
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+
+              {/* 모바일: 카드 형태 */}
+              <div className="md:hidden divide-y divide-slate-200">
                 {vendors.map((vendor) => (
-                  <tr
-                    key={vendor.vendor_id}
-                    className="border-b border-slate-100 hover:bg-slate-50"
-                  >
-                    <td className="px-4 py-3 text-slate-700 font-mono text-xs">
-                      {vendor.vendor_id}
-                    </td>
-                    <td className="px-4 py-3 text-slate-700 font-medium">
-                      {vendor.vendor_name}
-                    </td>
-                    <td className="px-4 py-3">
+                  <div key={vendor.vendor_id} className="p-4">
+                    <div className="flex items-start justify-between mb-3">
+                      <div className="flex-1">
+                        <h3 className="font-medium text-slate-800 mb-1">{vendor.vendor_name}</h3>
+                        <p className="text-xs text-slate-500 font-mono">{vendor.vendor_id}</p>
+                      </div>
                       <span
                         className={`inline-block rounded-full px-2 py-0.5 text-xs font-medium ${
                           vendor.is_active === "TRUE" || vendor.is_active === "true"
@@ -163,38 +293,40 @@ export function VendorsPageClient() {
                           ? "활성"
                           : "비활성"}
                       </span>
-                    </td>
-                    <td className="px-4 py-3 text-slate-600 text-xs">
-                      {vendor.created_at
-                        ? vendor.created_at.slice(0, 10).replace("T", " ")
-                        : "-"}
-                    </td>
-                    <td className="px-4 py-3 text-slate-600 text-xs">
-                      {vendor.updated_at
-                        ? vendor.updated_at.slice(0, 10).replace("T", " ")
-                        : "-"}
-                    </td>
-                    <td className="px-4 py-3 text-right">
-                      <div className="flex items-center justify-end gap-2">
-                        <Link
-                          href={`/vendors/${vendor.vendor_id}`}
-                          className="rounded bg-blue-600 px-3 py-1 text-xs text-white hover:bg-blue-700"
-                        >
-                          수정
-                        </Link>
-                        <button
-                          type="button"
-                          onClick={() => handleDelete(vendor.vendor_id, vendor.vendor_name)}
-                          className="rounded bg-red-600 px-3 py-1 text-xs text-white hover:bg-red-700"
-                        >
-                          삭제
-                        </button>
+                    </div>
+                    <div className="grid grid-cols-2 gap-2 text-xs text-slate-600 mb-3">
+                      <div>
+                        <span className="text-slate-500">생성일:</span>{" "}
+                        {vendor.created_at
+                          ? vendor.created_at.slice(0, 10).replace("T", " ")
+                          : "-"}
                       </div>
-                    </td>
-                  </tr>
+                      <div>
+                        <span className="text-slate-500">수정일:</span>{" "}
+                        {vendor.updated_at
+                          ? vendor.updated_at.slice(0, 10).replace("T", " ")
+                          : "-"}
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Link
+                        href={`/vendors/${vendor.vendor_id}`}
+                        className="flex-1 rounded bg-blue-600 px-3 py-2 text-xs text-white hover:bg-blue-700 text-center"
+                      >
+                        수정
+                      </Link>
+                      <button
+                        type="button"
+                        onClick={() => handleDelete(vendor.vendor_id, vendor.vendor_name)}
+                        className="flex-1 rounded bg-red-600 px-3 py-2 text-xs text-white hover:bg-red-700"
+                      >
+                        삭제
+                      </button>
+                    </div>
+                  </div>
                 ))}
-              </tbody>
-            </table>
+              </div>
+            </>
           )}
         </div>
       </div>

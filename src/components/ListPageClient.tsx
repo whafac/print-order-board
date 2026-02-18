@@ -321,6 +321,15 @@ export function ListPageClient() {
           >
             매체 사양 관리
           </Link>
+          {userRole === "admin" && (
+            <Link
+              href="/vendors"
+              onClick={() => setMobileMenuOpen(false)}
+              className="block text-base font-medium text-white/70 hover:text-white py-2"
+            >
+              제작업체 관리
+            </Link>
+          )}
         </div>
       </div>
 
