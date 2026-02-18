@@ -156,6 +156,16 @@ export function VendorFormClient({ vendorId }: VendorFormClientProps) {
     }
   }
 
+  // PIN 번호 자동 생성 함수
+  function generatePin() {
+    const pin = String(Math.floor(100000 + Math.random() * 900000));
+    setForm({
+      ...form,
+      pin,
+      pin_confirm: pin, // 자동으로 확인 필드도 채움
+    });
+  }
+
   async function logout() {
     await fetch("/api/auth/logout", { method: "POST" });
     router.push("/");
@@ -240,21 +250,45 @@ export function VendorFormClient({ vendorId }: VendorFormClientProps) {
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-slate-700 mb-2">
-              PIN 번호 {!isEditMode && <span className="text-red-500">*</span>}
-            </label>
-            <input
-              type="password"
-              value={form.pin}
-              onChange={(e) => setForm({ ...form, pin: e.target.value })}
-              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
-              placeholder={isEditMode ? "변경하지 않으려면 비워두세요" : "6자리 숫자"}
-              maxLength={6}
-            />
+            <div className="flex items-center justify-between mb-2">
+              <label className="block text-sm font-medium text-slate-700">
+                PIN 번호 {!isEditMode && <span className="text-red-500">*</span>}
+              </label>
+              <button
+                type="button"
+                onClick={generatePin}
+                className="text-xs text-blue-600 hover:text-blue-700 font-medium px-2 py-1 rounded hover:bg-blue-50"
+              >
+                🔢 PIN 자동 생성
+              </button>
+            </div>
+            <div className="flex items-center gap-2">
+              <input
+                type="text"
+                value={form.pin}
+                onChange={(e) => {
+                  const val = e.target.value.replace(/\D/g, "").slice(0, 6);
+                  setForm({ ...form, pin: val, pin_confirm: val === form.pin_confirm ? val : form.pin_confirm });
+                }}
+                className="flex-1 rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 font-mono text-center text-lg tracking-widest"
+                placeholder={isEditMode ? "변경하지 않으려면 비워두세요" : "6자리 숫자"}
+                maxLength={6}
+              />
+            </div>
+            {form.pin && (
+              <div className="mt-2 p-2 bg-blue-50 border border-blue-200 rounded-lg">
+                <p className="text-xs text-blue-800 font-medium">
+                  생성된 PIN: <span className="font-mono text-sm">{form.pin}</span>
+                </p>
+                <p className="text-xs text-blue-600 mt-1">
+                  이 PIN 번호를 안전하게 보관하세요. 업체 로그인 시 사용됩니다.
+                </p>
+              </div>
+            )}
             <p className="mt-1 text-xs text-slate-500">
               {isEditMode
-                ? "변경하지 않으려면 비워두세요. 변경 시 새 PIN 번호를 입력하세요."
-                : "6자리 숫자로 입력하세요."}
+                ? "변경하지 않으려면 비워두세요. 변경 시 새 PIN 번호를 입력하거나 'PIN 자동 생성' 버튼을 클릭하세요."
+                : "6자리 숫자로 입력하거나 'PIN 자동 생성' 버튼을 클릭하세요."}
             </p>
           </div>
 
