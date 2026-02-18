@@ -3,6 +3,8 @@ import { google } from "googleapis";
 const SHEET_ID = process.env.GOOGLE_SHEET_ID;
 const SPEC_SHEET = "spec_master";
 const JOBS_SHEET = "jobs_raw";
+const VENDORS_SHEET = "vendors";
+const VENDOR_PRICING_SHEET = "vendor_pricing";
 
 function getAuth() {
   const email = process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL;
@@ -60,13 +62,41 @@ export interface JobRow {
   order_type: string;
   type_spec_snapshot: string;
   production_cost?: string;
+  vendor_id?: string; // vendor_id 방식 사용 시
+}
+
+export interface VendorRow {
+  vendor_id: string;
+  vendor_name: string;
+  pin_hash?: string;
+  pin_hash_b64?: string;
+  is_active: string; // "TRUE" | "FALSE"
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface VendorPricingRow {
+  vendor_id: string;
+  item_type: string; // "page" | "binding" | "finishing"
+  item_name: string;
+  unit_price: number;
+  unit: string;
+  notes?: string;
 }
 
 const JOB_HEADERS: (keyof JobRow)[] = [
   "job_id", "created_at", "requester_name", "media_id", "media_name",
   "vendor", "due_date", "qty", "file_link", "changes_note", "status",
   "spec_snapshot", "last_updated_at", "last_updated_by",
-  "order_type", "type_spec_snapshot", "production_cost",
+  "order_type", "type_spec_snapshot", "production_cost", "vendor_id",
+];
+
+const VENDOR_HEADERS: (keyof VendorRow)[] = [
+  "vendor_id", "vendor_name", "pin_hash", "pin_hash_b64", "is_active", "created_at", "updated_at",
+];
+
+const VENDOR_PRICING_HEADERS: (keyof VendorPricingRow)[] = [
+  "vendor_id", "item_type", "item_name", "unit_price", "unit", "notes",
 ];
 
 function rowToSpecByHeader(row: string[], header: string[]): SpecRow {
@@ -114,11 +144,54 @@ function rowToJobByHeader(row: string[], header: string[]): JobRow {
   return o as unknown as JobRow;
 }
 
+function rowToVendor(row: string[]): VendorRow {
+  const o: Record<string, string> = {};
+  VENDOR_HEADERS.forEach((h, i) => { o[h] = row[i] ?? ""; });
+  return o as unknown as VendorRow;
+}
+
+function rowToVendorByHeader(row: string[], header: string[]): VendorRow {
+  const o: Record<string, string> = {};
+  VENDOR_HEADERS.forEach((key) => {
+    const col = headerCol(header, key);
+    o[key] = col >= 0 ? (row[col] ?? "").toString().trim() : "";
+  });
+  return o as unknown as VendorRow;
+}
+
+function rowToVendorPricing(row: string[]): VendorPricingRow {
+  const o: Record<string, string | number> = {};
+  VENDOR_PRICING_HEADERS.forEach((h, i) => {
+    const val = row[i] ?? "";
+    if (h === "unit_price") {
+      o[h] = parseFloat(String(val)) || 0;
+    } else {
+      o[h] = String(val).trim();
+    }
+  });
+  return o as unknown as VendorPricingRow;
+}
+
+function rowToVendorPricingByHeader(row: string[], header: string[]): VendorPricingRow {
+  const o: Record<string, string | number> = {};
+  VENDOR_PRICING_HEADERS.forEach((key) => {
+    const col = headerCol(header, key);
+    const val = col >= 0 ? (row[col] ?? "").toString().trim() : "";
+    if (key === "unit_price") {
+      o[key] = parseFloat(val) || 0;
+    } else {
+      o[key] = val;
+    }
+  });
+  return o as unknown as VendorPricingRow;
+}
+
 // 제작금액 계산 함수 (책자만)
-export function calculateProductionCostFromSpec(
+export async function calculateProductionCostFromSpec(
   spec: Record<string, unknown>,
-  qty: string
-): number | null {
+  qty: string,
+  vendorId?: string
+): Promise<number | null> {
   // 책자가 아니면 null 반환
   const orderType = String(spec.order_type || "");
   if (orderType !== "book") return null;
@@ -133,23 +206,35 @@ export function calculateProductionCostFromSpec(
   // 수량 추출
   const qtyNum = parseInt(qty.trim(), 10) || 1;
 
+  // 단가 조회 함수 (vendorId가 있으면 vendor_pricing에서 조회, 없으면 기본값)
+  async function getPrice(itemType: "page" | "binding" | "finishing", itemName: string, defaultValue: number): Promise<number> {
+    if (vendorId) {
+      const price = await getVendorPrice(vendorId, itemType, itemName);
+      if (price !== null) return price;
+    }
+    return defaultValue;
+  }
+
   // 표지 페이지 수 계산
   const coverPrint = String(spec.cover_print || spec.print_color || "");
   const coverPageCount = coverPrint.includes("단면") ? 2 : 4;
-  const coverCost = coverPageCount * 300 * qtyNum;
+  const coverPrice = await getPrice("page", "표지", 300);
+  const coverCost = coverPageCount * coverPrice * qtyNum;
 
   // 내지 페이지 수 계산
   const innerPages = String(spec.inner_pages || spec.pages || "");
   const innerPageCount = extractPageCount(innerPages);
-  const innerCost = innerPageCount * 300 * qtyNum;
+  const innerPrice = await getPrice("page", "내지", 300);
+  const innerCost = innerPageCount * innerPrice * qtyNum;
 
   // 추가 내지 비용 계산
   let additionalInnerCost = 0;
   const additionalPages = spec.additional_inner_pages;
   if (Array.isArray(additionalPages)) {
+    const additionalPrice = await getPrice("page", "추가내지", 300);
     (additionalPages as Record<string, unknown>[]).forEach((item) => {
       const pageCount = extractPageCount(String(item.pages || ""));
-      additionalInnerCost += pageCount * 300 * qtyNum;
+      additionalInnerCost += pageCount * additionalPrice * qtyNum;
     });
   }
 
@@ -157,9 +242,11 @@ export function calculateProductionCostFromSpec(
   const binding = String(spec.binding || "");
   let bindingCost = 0;
   if (binding.includes("무선제본")) {
-    bindingCost = 2000 * qtyNum;
+    const wirelessPrice = await getPrice("binding", "무선제본", 2000);
+    bindingCost = wirelessPrice * qtyNum;
   } else if (binding.includes("중철제본")) {
-    bindingCost = 1500 * qtyNum;
+    const saddlePrice = await getPrice("binding", "중철제본", 1500);
+    bindingCost = saddlePrice * qtyNum;
   }
 
   // 후가공 비용
@@ -169,7 +256,8 @@ export function calculateProductionCostFromSpec(
   if (finishingLower.startsWith("없음") || finishingLower === "") {
     finishingCost = 0;
   } else if (finishingLower.includes("에폭시")) {
-    finishingCost = 120000;
+    const epoxyPrice = await getPrice("finishing", "에폭시", 120000);
+    finishingCost = epoxyPrice;
   } else if (
     finishingLower.includes("코팅") ||
     finishingLower.includes("라미네이팅") ||
@@ -179,7 +267,8 @@ export function calculateProductionCostFromSpec(
     if (finishingLower.includes("양면")) {
       coatingPageCount = 4;
     }
-    finishingCost = coatingPageCount * 500 * qtyNum;
+    const coatingPrice = await getPrice("finishing", "코팅", 500);
+    finishingCost = coatingPageCount * coatingPrice * qtyNum;
   }
 
   // 총 제작금액
@@ -327,7 +416,7 @@ export async function appendJob(row: Omit<JobRow, "job_id" | "created_at" | "las
     try {
       const spec = JSON.parse(row.spec_snapshot);
       spec.order_type = row.order_type; // order_type 추가
-      const cost = calculateProductionCostFromSpec(spec, row.qty);
+      const cost = await calculateProductionCostFromSpec(spec, row.qty, row.vendor_id);
       if (cost !== null) {
         productionCost = String(cost);
       }
@@ -340,19 +429,19 @@ export async function appendJob(row: Omit<JobRow, "job_id" | "created_at" | "las
     id, created, row.requester_name, row.media_id, row.media_name,
     row.vendor, row.due_date, row.qty, row.file_link, row.changes_note,
     row.status ?? "접수", row.spec_snapshot, lastUpdated, row.last_updated_by ?? "",
-    row.order_type ?? "", row.type_spec_snapshot ?? "", productionCost,
+    row.order_type ?? "", row.type_spec_snapshot ?? "", productionCost, row.vendor_id ?? "",
   ];
   const { sheets, sheetId } = await getSheets();
   try {
     const res = await sheets.spreadsheets.values.get({
       spreadsheetId: sheetId,
-      range: `${JOBS_SHEET}!A:Q`,
+      range: `${JOBS_SHEET}!A:R`, // vendor_id 컬럼 포함
     });
     const rows = res.data.values ?? [];
     const nextRow = rows.length + 1;
     await sheets.spreadsheets.values.update({
       spreadsheetId: sheetId,
-      range: `${JOBS_SHEET}!A${nextRow}:Q${nextRow}`,
+      range: `${JOBS_SHEET}!A${nextRow}:R${nextRow}`, // vendor_id 컬럼 포함
       valueInputOption: "USER_ENTERED",
       requestBody: { values: [newRow] },
     });
@@ -382,13 +471,14 @@ export async function getJobs(filters: {
   month?: string;
   status?: string;
   vendor?: string;
+  vendor_id?: string; // 제작업체 필터링용
   media_id?: string;
   q?: string;
 }): Promise<JobRow[]> {
   const { sheets, sheetId } = await getSheets();
   const res = await sheets.spreadsheets.values.get({
     spreadsheetId: sheetId,
-    range: `${JOBS_SHEET}!A:Q`,
+    range: `${JOBS_SHEET}!A:R`, // vendor_id 컬럼 포함
   });
   const rows = res.data.values ?? [];
   const start = jobsDataStart(rows);
@@ -414,6 +504,16 @@ export async function getJobs(filters: {
   }
   if (filters.status) list = list.filter((j) => j.status === filters.status);
   if (filters.vendor) list = list.filter((j) => j.vendor === filters.vendor);
+  if (filters.vendor_id) {
+    // vendor_id로 필터링
+    list = list.filter((j) => {
+      // vendor_id 컬럼이 있으면 그것으로 매칭
+      if (j.vendor_id) return j.vendor_id === filters.vendor_id;
+      // 없으면 vendor 이름으로 매칭 (하위 호환을 위해 vendors 시트에서 조회)
+      // 이 부분은 getVendors 함수가 정의된 후에 동적으로 처리
+      return false; // 일단 vendor_id 컬럼이 없으면 제외 (나중에 개선 가능)
+    });
+  }
   if (filters.media_id) list = list.filter((j) => j.media_id === filters.media_id);
   if (filters.q) {
     const q = filters.q.toLowerCase();
@@ -443,7 +543,7 @@ export async function getJobById(jobId: string): Promise<JobRow | null> {
     const { sheets, sheetId } = await getSheets();
   const res = await sheets.spreadsheets.values.get({
     spreadsheetId: sheetId,
-    range: `${JOBS_SHEET}!A:Q`,
+    range: `${JOBS_SHEET}!A:R`, // vendor_id 컬럼 포함
   });
   const rows = res.data.values ?? [];
   if (rows.length === 0) {
@@ -453,10 +553,14 @@ export async function getJobById(jobId: string): Promise<JobRow | null> {
       continue;
     }
 
-    for (let i = 0; i < rows.length; i++) {
+    const header = rows[0] ?? [];
+    const hasHeader = headerCol(header, "job_id") >= 0;
+    for (let i = hasHeader ? 1 : 0; i < rows.length; i++) {
       const row = rows[i] ?? [];
       const firstCell = normalizeCell(row[0]);
-      if (firstCell === needle) return rowToJob(row);
+      if (firstCell === needle) {
+        return hasHeader ? rowToJobByHeader(row, header) : rowToJob(row);
+      }
     }
 
     if (attempt < maxRetries - 1) {
@@ -477,7 +581,7 @@ export async function updateJob(
   const { sheets, sheetId } = await getSheets();
   const res = await sheets.spreadsheets.values.get({
     spreadsheetId: sheetId,
-    range: `${JOBS_SHEET}!A:Q`,
+    range: `${JOBS_SHEET}!A:R`, // vendor_id 컬럼 포함
   });
   const rows = res.data.values ?? [];
   if (rows.length === 0) return false;
@@ -499,7 +603,7 @@ export async function updateJob(
     if (updates.last_updated_by !== undefined && lastUpdatedByCol >= 0) newRow[lastUpdatedByCol] = updates.last_updated_by;
     if (updates.production_cost !== undefined && productionCostCol >= 0) newRow[productionCostCol] = updates.production_cost;
     if (lastUpdatedAtCol >= 0) newRow[lastUpdatedAtCol] = new Date().toISOString();
-    const range = `${JOBS_SHEET}!A${i + 1}:Q${i + 1}`;
+    const range = `${JOBS_SHEET}!A${i + 1}:R${i + 1}`; // vendor_id 컬럼 포함
     await sheets.spreadsheets.values.update({
       spreadsheetId: sheetId,
       range,
@@ -509,4 +613,111 @@ export async function updateJob(
     return true;
   }
   return false;
+}
+
+// ========== Vendors 관련 함수 ==========
+
+function vendorsDataStart(rows: string[][]): number {
+  if (rows.length === 0) return 0;
+  const first = rows[0] ?? [];
+  return headerCol(first, "vendor_id") >= 0 ? 1 : 0;
+}
+
+export async function getVendors(): Promise<VendorRow[]> {
+  const { sheets, sheetId } = await getSheets();
+  try {
+    const res = await sheets.spreadsheets.values.get({
+      spreadsheetId: sheetId,
+      range: `${VENDORS_SHEET}!A:G`,
+    });
+    const rows = res.data.values ?? [];
+    const start = vendorsDataStart(rows);
+    const header = rows[0] ?? [];
+    const hasHeader = start === 1;
+    const list: VendorRow[] = [];
+    for (let i = start; i < rows.length; i++) {
+      const row = rows[i] ?? [];
+      if (!row[0]?.toString().trim()) continue; // vendor_id가 비어있으면 스킵
+      const vendor = hasHeader ? rowToVendorByHeader(row, header) : rowToVendor(row);
+      // is_active가 없거나 TRUE이면 포함 (기본값: 활성화)
+      if (!vendor.is_active || vendor.is_active === "TRUE" || vendor.is_active === "true") {
+        list.push(vendor);
+      }
+    }
+    return list;
+  } catch (e) {
+    console.error(`Failed to get vendors from ${VENDORS_SHEET}:`, e);
+    return [];
+  }
+}
+
+export async function getVendorById(vendorId: string): Promise<VendorRow | null> {
+  const vendors = await getVendors();
+  return vendors.find((v) => v.vendor_id === vendorId) ?? null;
+}
+
+export async function getVendorByPin(pin: string): Promise<VendorRow | null> {
+  const vendors = await getVendors();
+  for (const vendor of vendors) {
+    const hash = vendor.pin_hash_b64
+      ? Buffer.from(vendor.pin_hash_b64, "base64").toString("utf8")
+      : vendor.pin_hash ?? "";
+    if (!hash) continue;
+    try {
+      const bcrypt = await import("bcrypt");
+      const match = await bcrypt.compare(pin, hash);
+      if (match) return vendor;
+    } catch {
+      // bcrypt 비교 실패 시 다음 vendor 확인
+      continue;
+    }
+  }
+  return null;
+}
+
+// ========== Vendor Pricing 관련 함수 ==========
+
+function vendorPricingDataStart(rows: string[][]): number {
+  if (rows.length === 0) return 0;
+  const first = rows[0] ?? [];
+  return headerCol(first, "vendor_id") >= 0 ? 1 : 0;
+}
+
+export async function getVendorPricing(vendorId: string): Promise<VendorPricingRow[]> {
+  const { sheets, sheetId } = await getSheets();
+  try {
+    const res = await sheets.spreadsheets.values.get({
+      spreadsheetId: sheetId,
+      range: `${VENDOR_PRICING_SHEET}!A:F`,
+    });
+    const rows = res.data.values ?? [];
+    const start = vendorPricingDataStart(rows);
+    const header = rows[0] ?? [];
+    const hasHeader = start === 1;
+    const list: VendorPricingRow[] = [];
+    for (let i = start; i < rows.length; i++) {
+      const row = rows[i] ?? [];
+      if (!row[0]?.toString().trim()) continue; // vendor_id가 비어있으면 스킵
+      const pricing = hasHeader ? rowToVendorPricingByHeader(row, header) : rowToVendorPricing(row);
+      if (pricing.vendor_id === vendorId) {
+        list.push(pricing);
+      }
+    }
+    return list;
+  } catch (e) {
+    console.error(`Failed to get vendor pricing from ${VENDOR_PRICING_SHEET}:`, e);
+    return [];
+  }
+}
+
+export async function getVendorPrice(
+  vendorId: string,
+  itemType: "page" | "binding" | "finishing",
+  itemName: string
+): Promise<number | null> {
+  const pricing = await getVendorPricing(vendorId);
+  const item = pricing.find(
+    (p) => p.item_type === itemType && p.item_name === itemName
+  );
+  return item ? item.unit_price : null;
 }

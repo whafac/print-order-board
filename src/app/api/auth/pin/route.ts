@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import bcrypt from "bcrypt";
 import { createAuthToken, getCookieName, getCookieOptions } from "@/lib/auth";
 import { checkRateLimit } from "@/lib/rate-limit";
+import { getVendorByPin } from "@/lib/sheets";
 
 const HONEYPOT = "website_url"; // 봇이 채우면 실패
 
@@ -43,13 +44,29 @@ export async function POST(request: NextRequest) {
     }, { status: 500 });
   }
 
+  // 1. 관리자 PIN 확인 (기존 로직)
   const match = await bcrypt.compare(pin, hash);
-  if (!match) {
-    return NextResponse.json({ error: "PIN이 올바르지 않습니다" }, { status: 401 });
+  if (match) {
+    const token = await createAuthToken("admin");
+    const res = NextResponse.json({ ok: true });
+    res.cookies.set(getCookieName(), token, getCookieOptions());
+    return res;
   }
 
-  const token = await createAuthToken();
-  const res = NextResponse.json({ ok: true });
-  res.cookies.set(getCookieName(), token, getCookieOptions());
-  return res;
+  // 2. 제작업체 PIN 확인
+  try {
+    const vendor = await getVendorByPin(pin);
+    if (vendor) {
+      const token = await createAuthToken("vendor", vendor.vendor_id);
+      const res = NextResponse.json({ ok: true });
+      res.cookies.set(getCookieName(), token, getCookieOptions());
+      return res;
+    }
+  } catch (e) {
+    // vendors 시트가 없거나 오류 시 무시하고 계속 진행
+    console.warn("Failed to check vendor PIN:", e);
+  }
+
+  // 3. 둘 다 실패
+  return NextResponse.json({ error: "PIN이 올바르지 않습니다" }, { status: 401 });
 }
