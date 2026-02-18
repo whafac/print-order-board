@@ -10,7 +10,7 @@ export async function GET(
   // 제작업체는 매체사양관리 접근 불가
   const role = await getUserRole();
   if (role === "vendor") {
-    return NextResponse.json({ error: "접근 권한이 없습니다. 매체사양관리는 의뢰자와 관리자만 접근할 수 있습니다." }, { status: 403 });
+    return NextResponse.json({ error: "접근 권한이 없습니다. 관리자에게 문의해 주세요." }, { status: 403 });
   }
 
   const { media_id } = await params;
@@ -31,7 +31,7 @@ export async function PATCH(
   // 제작업체는 매체사양관리 접근 불가
   const role = await getUserRole();
   if (role === "vendor") {
-    return NextResponse.json({ error: "접근 권한이 없습니다. 매체사양관리는 의뢰자와 관리자만 접근할 수 있습니다." }, { status: 403 });
+    return NextResponse.json({ error: "접근 권한이 없습니다. 관리자에게 문의해 주세요." }, { status: 403 });
   }
 
   const { media_id } = await params;
