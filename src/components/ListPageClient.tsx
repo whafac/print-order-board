@@ -164,6 +164,8 @@ export function ListPageClient() {
   const [loading, setLoading] = useState(true);
   const [summary, setSummary] = useState({ total: 0, received: 0, due7: 0, done: 0 });
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [userRole, setUserRole] = useState<"admin" | "vendor" | "requester">("admin");
+  const [vendorName, setVendorName] = useState<string | null>(null);
 
   async function logout() {
     await fetch("/api/auth/logout", { method: "POST" });
@@ -199,6 +201,23 @@ export function ListPageClient() {
     load();
   }, [month, status, vendor, mediaId]);
 
+  // 사용자 역할 및 업체명 확인
+  useEffect(() => {
+    async function checkUserRole() {
+      try {
+        const res = await fetch("/api/auth/role");
+        const data = await res.json();
+        if (res.ok) {
+          setUserRole(data.role || "admin");
+          setVendorName(data.vendor_name || null);
+        }
+      } catch {
+        // 역할 확인 실패 시 기본값 유지
+      }
+    }
+    checkUserRole();
+  }, []);
+
   const vendors = Array.from(new Set(jobs.map((j) => j.vendor).filter(Boolean))).sort();
 
   return (
@@ -228,10 +247,20 @@ export function ListPageClient() {
                 )}
               </svg>
             </button>
-            <span className="text-base font-medium text-blue-600">제작 의뢰 관리</span>
+            <div className="flex flex-col">
+              <span className="text-base font-medium text-blue-600">제작 의뢰 관리</span>
+              {userRole === "vendor" && vendorName && (
+                <span className="text-xs text-blue-500">{vendorName} 로그인</span>
+              )}
+            </div>
           </div>
 
           <div className="flex items-center gap-3">
+            {userRole === "vendor" && vendorName && (
+              <span className="hidden sm:inline text-sm font-medium text-blue-600">
+                {vendorName} 로그인
+              </span>
+            )}
             <span className="hidden sm:inline text-sm text-emerald-600">잠금해제됨 ✔</span>
             <button
               type="button"
@@ -406,14 +435,17 @@ export function ListPageClient() {
           </label>
         </div>
 
-        <div className="mb-4 flex justify-end">
-          <Link
-            href="/new"
-            className="inline-flex items-center gap-1 rounded-lg bg-slate-800 px-4 py-2 text-sm font-medium text-white hover:bg-slate-700"
-          >
-            + 새 의뢰
-          </Link>
-        </div>
+        {/* 제작업체는 "새 의뢰" 버튼 숨김 */}
+        {userRole !== "vendor" && (
+          <div className="mb-4 flex justify-end">
+            <Link
+              href="/new"
+              className="inline-flex items-center gap-1 rounded-lg bg-slate-800 px-4 py-2 text-sm font-medium text-white hover:bg-slate-700"
+            >
+              + 새 의뢰
+            </Link>
+          </div>
+        )}
 
         <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
           {loading ? (
