@@ -17,6 +17,7 @@ interface Job {
   status: string;
   order_type?: string;
   spec_snapshot?: string;
+  type_spec_snapshot?: string;
   production_cost?: string;
 }
 
