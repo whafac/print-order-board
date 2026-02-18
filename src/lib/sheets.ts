@@ -631,19 +631,23 @@ export async function getVendors(): Promise<VendorRow[]> {
       range: `${VENDORS_SHEET}!A:G`,
     });
     const rows = res.data.values ?? [];
+    console.log(`[getVendors] Fetched ${rows.length} rows from ${VENDORS_SHEET}`);
     const start = vendorsDataStart(rows);
     const header = rows[0] ?? [];
     const hasHeader = start === 1;
+    console.log(`[getVendors] Header row: ${hasHeader ? "yes" : "no"}, headers:`, header);
     const list: VendorRow[] = [];
     for (let i = start; i < rows.length; i++) {
       const row = rows[i] ?? [];
       if (!row[0]?.toString().trim()) continue; // vendor_id가 비어있으면 스킵
       const vendor = hasHeader ? rowToVendorByHeader(row, header) : rowToVendor(row);
+      console.log(`[getVendors] Vendor ${i}: id=${vendor.vendor_id}, name=${vendor.vendor_name}, pin_hash_b64=${vendor.pin_hash_b64 ? "exists" : "empty"}, is_active=${vendor.is_active}`);
       // is_active가 없거나 TRUE이면 포함 (기본값: 활성화)
       if (!vendor.is_active || vendor.is_active === "TRUE" || vendor.is_active === "true") {
         list.push(vendor);
       }
     }
+    console.log(`[getVendors] Returning ${list.length} active vendors`);
     return list;
   } catch (e) {
     console.error(`Failed to get vendors from ${VENDORS_SHEET}:`, e);
@@ -658,20 +662,29 @@ export async function getVendorById(vendorId: string): Promise<VendorRow | null>
 
 export async function getVendorByPin(pin: string): Promise<VendorRow | null> {
   const vendors = await getVendors();
+  console.log(`[getVendorByPin] Checking PIN for ${vendors.length} vendors`);
   for (const vendor of vendors) {
     const hash = vendor.pin_hash_b64
       ? Buffer.from(vendor.pin_hash_b64, "base64").toString("utf8")
       : vendor.pin_hash ?? "";
-    if (!hash) continue;
+    if (!hash) {
+      console.log(`[getVendorByPin] Vendor ${vendor.vendor_id} has no PIN hash`);
+      continue;
+    }
     try {
       const bcrypt = await import("bcrypt");
       const match = await bcrypt.compare(pin, hash);
-      if (match) return vendor;
-    } catch {
+      if (match) {
+        console.log(`[getVendorByPin] PIN matched for vendor: ${vendor.vendor_id} (${vendor.vendor_name})`);
+        return vendor;
+      }
+    } catch (e) {
       // bcrypt 비교 실패 시 다음 vendor 확인
+      console.error(`[getVendorByPin] Error comparing PIN for vendor ${vendor.vendor_id}:`, e);
       continue;
     }
   }
+  console.log(`[getVendorByPin] No vendor found matching PIN`);
   return null;
 }
 

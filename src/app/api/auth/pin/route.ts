@@ -57,14 +57,17 @@ export async function POST(request: NextRequest) {
   try {
     const vendor = await getVendorByPin(pin);
     if (vendor) {
+      console.log(`[PIN Auth] Vendor login successful: ${vendor.vendor_id} (${vendor.vendor_name})`);
       const token = await createAuthToken("vendor", vendor.vendor_id);
       const res = NextResponse.json({ ok: true });
       res.cookies.set(getCookieName(), token, getCookieOptions());
       return res;
+    } else {
+      console.log(`[PIN Auth] No vendor found for PIN: ${pin}`);
     }
   } catch (e) {
     // vendors 시트가 없거나 오류 시 무시하고 계속 진행
-    console.warn("Failed to check vendor PIN:", e);
+    console.error("Failed to check vendor PIN:", e);
   }
 
   // 3. 둘 다 실패
