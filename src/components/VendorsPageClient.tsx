@@ -224,7 +224,7 @@ export function VendorsPageClient() {
                         <td className="px-4 py-3 text-slate-700 font-mono text-xs">
                           {vendor.vendor_id}
                         </td>
-                        <td className="px-4 py-3 text-slate-700 font-medium">
+                        <td className="px-4 py-3 text-slate-900 font-medium">
                           {vendor.vendor_name}
                         </td>
                         <td className="px-4 py-3">
@@ -232,7 +232,7 @@ export function VendorsPageClient() {
                             className={`inline-block rounded-full px-2 py-0.5 text-xs font-medium ${
                               vendor.is_active === "TRUE" || vendor.is_active === "true"
                                 ? "bg-emerald-100 text-emerald-800"
-                                : "bg-slate-100 text-slate-600"
+                                : "bg-slate-100 text-slate-800"
                             }`}
                           >
                             {vendor.is_active === "TRUE" || vendor.is_active === "true"
@@ -254,14 +254,14 @@ export function VendorsPageClient() {
                           <div className="flex items-center justify-end gap-2">
                             <Link
                               href={`/vendors/${vendor.vendor_id}`}
-                              className="rounded bg-blue-600 px-3 py-1 text-xs text-white hover:bg-blue-700"
+                              className="rounded bg-slate-800 px-3 py-1 text-xs text-white hover:bg-slate-700"
                             >
                               수정
                             </Link>
                             <button
                               type="button"
                               onClick={() => handleDelete(vendor.vendor_id, vendor.vendor_name)}
-                              className="rounded bg-red-600 px-3 py-1 text-xs text-white hover:bg-red-700"
+                              className="rounded border border-slate-300 bg-white px-3 py-1 text-xs text-slate-900 hover:bg-slate-50"
                             >
                               삭제
                             </button>
@@ -311,14 +311,14 @@ export function VendorsPageClient() {
                     <div className="flex items-center gap-2">
                       <Link
                         href={`/vendors/${vendor.vendor_id}`}
-                        className="flex-1 rounded bg-blue-600 px-3 py-2 text-xs text-white hover:bg-blue-700 text-center"
+                        className="flex-1 rounded bg-slate-800 px-3 py-2 text-xs text-white hover:bg-slate-700 text-center"
                       >
                         수정
                       </Link>
                       <button
                         type="button"
                         onClick={() => handleDelete(vendor.vendor_id, vendor.vendor_name)}
-                        className="flex-1 rounded bg-red-600 px-3 py-2 text-xs text-white hover:bg-red-700"
+                        className="flex-1 rounded border border-slate-300 bg-white px-3 py-2 text-xs text-slate-900 hover:bg-slate-50"
                       >
                         삭제
                       </button>
