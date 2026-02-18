@@ -78,7 +78,7 @@ export function JobDetailClient({ job }: { job: Job }) {
   } catch {}
   const isSheet = job.order_type === "sheet";
 
-  // 제작금액 계산 함수 (책자만) - 구글시트에 저장된 값 우선 사용
+  // 제작금액 계산 함수 (책자 및 낱장) - 구글시트에 저장된 값 우선 사용
   function calculateProductionCost() {
     // 구글시트에 저장된 제작금액이 있으면 사용
     if (job.production_cost && job.production_cost.trim() !== "") {
@@ -94,7 +94,56 @@ export function JobDetailClient({ job }: { job: Job }) {
     }
 
     // 저장된 값이 없으면 계산
-    if (isSheet || !job.spec_snapshot) return null;
+    if (isSheet) {
+      // 낱장 금액 계산
+      if (!job.type_spec_snapshot) return null;
+      try {
+        const kindsCount = Math.max(1, parseInt(String(typeSpec.kinds_count || "1"), 10) || 1);
+        const sheetsPerKind = Math.max(1, parseInt(String(typeSpec.sheets_per_kind || "1"), 10) || 1);
+        const totalSheets = kindsCount * sheetsPerKind;
+
+        // 기본 인쇄 비용 (매당 300원)
+        const printCost = totalSheets * 300;
+
+        // 후가공 비용
+        let finishingCost = 0;
+        const finishing = String(typeSpec.finishing || "");
+        const finishingLower = finishing.toLowerCase().trim();
+        const printSide = String(typeSpec.print_side || "양면");
+
+        if (!finishingLower.startsWith("없음") && finishingLower !== "") {
+          if (finishingLower.includes("에폭시")) {
+            // 에폭시는 종 수당 1회 (120000원)
+            finishingCost = 120000 * kindsCount;
+          } else if (
+            finishingLower.includes("코팅") ||
+            finishingLower.includes("라미네이팅") ||
+            finishingLower.includes("라미테이팅")
+          ) {
+            // 코팅은 매당 500원
+            let coatingSheets = totalSheets;
+            if (printSide === "양면") {
+              // 양면 인쇄인 경우 양면 코팅으로 계산 (매당 2면)
+              coatingSheets = totalSheets * 2;
+            }
+            finishingCost = coatingSheets * 500;
+          }
+        }
+
+        // 총 제작금액 (공급가)
+        const subtotal = printCost + finishingCost;
+        // 부가세 (10%)
+        const vat = Math.floor(subtotal * 0.1);
+        // 총금액
+        const total = subtotal + vat;
+
+        return { subtotal, vat, total };
+      } catch {
+        return null;
+      }
+    }
+
+    if (!job.spec_snapshot) return null;
 
     // 페이지 수 추출 함수
     function extractPageCount(pageStr: string | undefined): number {
@@ -325,7 +374,7 @@ export function JobDetailClient({ job }: { job: Job }) {
         )}
 
         {/* 제작금액 표시 (책자만) */}
-        {!isSheet && (() => {
+        {(() => {
           const cost = calculateProductionCost();
           if (!cost) return null;
           return (

@@ -694,7 +694,7 @@ export function NewOrderClient() {
     .sec { font-size: 1rem; color: #64748b; margin: 0 0 12px; font-weight: 500; }
     .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px 16px; font-size: 0.9375rem; }
     .grid .full { grid-column: 1 / -1; }
-    .grid dt { color: #64748b; margin: 0; font-weight: 500; }
+    .grid dt { color: #94a3b8; margin: 0; font-weight: 500; }
     .grid dd { margin: 0; color: #1e293b; word-break: break-all; white-space: pre-wrap; }
     .actions { display: flex; gap: 12px; margin-top: 24px; flex-wrap: wrap; }
     .btn { padding: 14px 28px; font-size: 1rem; border-radius: 8px; cursor: pointer; border: none; font-weight: 500; min-height: 44px; flex: 1; min-width: 120px; }

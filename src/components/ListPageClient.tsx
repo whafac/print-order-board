@@ -76,8 +76,58 @@ function getTotalAmount(job: Job): number | null {
     if (!Number.isNaN(cost)) return cost;
   }
 
-  // 저장된 값이 없으면 계산 (책자만)
-  if (job.order_type === "sheet" || !job.spec_snapshot) return null;
+  // 저장된 값이 없으면 계산
+  if (job.order_type === "sheet") {
+    // 낱장 금액 계산
+    if (!job.type_spec_snapshot) return null;
+    try {
+      const typeSpec = JSON.parse(job.type_spec_snapshot);
+      const kindsCount = Math.max(1, parseInt(String(typeSpec.kinds_count || "1"), 10) || 1);
+      const sheetsPerKind = Math.max(1, parseInt(String(typeSpec.sheets_per_kind || "1"), 10) || 1);
+      const totalSheets = kindsCount * sheetsPerKind;
+
+      // 기본 인쇄 비용 (매당 300원)
+      const printCost = totalSheets * 300;
+
+      // 후가공 비용
+      let finishingCost = 0;
+      const finishing = String(typeSpec.finishing || "");
+      const finishingLower = finishing.toLowerCase().trim();
+      const printSide = String(typeSpec.print_side || "양면");
+
+      if (!finishingLower.startsWith("없음") && finishingLower !== "") {
+        if (finishingLower.includes("에폭시")) {
+          // 에폭시는 종 수당 1회 (120000원)
+          finishingCost = 120000 * kindsCount;
+        } else if (
+          finishingLower.includes("코팅") ||
+          finishingLower.includes("라미네이팅") ||
+          finishingLower.includes("라미테이팅")
+        ) {
+          // 코팅은 매당 500원
+          let coatingSheets = totalSheets;
+          if (printSide === "양면") {
+            // 양면 인쇄인 경우 양면 코팅으로 계산 (매당 2면)
+            coatingSheets = totalSheets * 2;
+          }
+          finishingCost = coatingSheets * 500;
+        }
+      }
+
+      // 총 제작금액 (공급가)
+      const subtotal = printCost + finishingCost;
+      // 부가세 (10%)
+      const vat = Math.floor(subtotal * 0.1);
+      // 총금액
+      const total = subtotal + vat;
+
+      return total;
+    } catch {
+      return null;
+    }
+  }
+
+  if (!job.spec_snapshot) return null;
 
   try {
     const spec = JSON.parse(job.spec_snapshot);
