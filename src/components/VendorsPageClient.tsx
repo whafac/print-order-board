@@ -7,6 +7,7 @@ import { useRouter } from "next/navigation";
 interface Vendor {
   vendor_id: string;
   vendor_name: string;
+  pin?: string; // PIN 평문 (관리자 확인용)
   is_active: string;
   created_at?: string;
   updated_at?: string;
