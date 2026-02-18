@@ -79,6 +79,7 @@ export function SpecsPageClient() {
   const [toast, setToast] = useState<"ok" | "err" | null>(null);
   const [additionalInnerPages, setAdditionalInnerPages] = useState<AdditionalInnerPage[]>([]);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [userRole, setUserRole] = useState<"admin" | "vendor" | "requester">("admin");
 
   // 권한 체크: 제작업체는 접근 불가
   useEffect(() => {
@@ -86,11 +87,14 @@ export function SpecsPageClient() {
       try {
         const res = await fetch("/api/auth/role");
         const data = await res.json();
-        if (res.ok && data.role === "vendor") {
-          // 제작업체는 매체사양관리 접근 불가
-          alert("접근 권한이 없습니다. 관리자에게 문의해 주세요.");
-          router.push("/list");
-          return;
+        if (res.ok) {
+          setUserRole(data.role || "admin");
+          if (data.role === "vendor") {
+            // 제작업체는 매체사양관리 접근 불가
+            alert("접근 권한이 없습니다. 관리자에게 문의해 주세요.");
+            router.push("/list");
+            return;
+          }
         }
       } catch {
         // 역할 확인 실패 시 계속 진행 (하위 호환)
@@ -240,6 +244,8 @@ export function SpecsPageClient() {
             <Link href="/list" className="text-base font-medium text-slate-600 hover:text-slate-800">제작 의뢰 관리</Link>
             <span className="text-slate-400">|</span>
             <Link href="/specs" className="text-base font-medium text-blue-600">매체 사양 관리</Link>
+            <span className="text-slate-400">|</span>
+            <Link href="/vendors" className="text-base font-medium text-slate-600 hover:text-slate-800">제작업체 관리</Link>
           </div>
           
           {/* 모바일: 햄버거 버튼 */}
@@ -316,6 +322,15 @@ export function SpecsPageClient() {
           >
             매체 사양 관리
           </Link>
+          {userRole === "admin" && (
+            <Link
+              href="/vendors"
+              onClick={() => setMobileMenuOpen(false)}
+              className="block text-base font-medium text-white/70 hover:text-white py-2"
+            >
+              제작업체 관리
+            </Link>
+          )}
         </div>
       </div>
 

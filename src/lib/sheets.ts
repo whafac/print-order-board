@@ -734,3 +734,134 @@ export async function getVendorPrice(
   );
   return item ? item.unit_price : null;
 }
+
+// ========== Vendor CRUD 함수 ==========
+
+function vendorToRow(vendor: VendorRow): string[] {
+  return [
+    vendor.vendor_id,
+    vendor.vendor_name,
+    vendor.pin_hash ?? "",
+    vendor.pin_hash_b64 ?? "",
+    vendor.is_active ?? "TRUE",
+    vendor.created_at ?? "",
+    vendor.updated_at ?? "",
+  ];
+}
+
+export async function createVendor(vendor: Omit<VendorRow, "created_at" | "updated_at">): Promise<boolean> {
+  const { sheets, sheetId } = await getSheets();
+  const now = toKoreaTimeString(new Date());
+  const newVendor: VendorRow = {
+    ...vendor,
+    created_at: now,
+    updated_at: now,
+  };
+  const row = vendorToRow(newVendor);
+  try {
+    await sheets.spreadsheets.values.append({
+      spreadsheetId: sheetId,
+      range: `${VENDORS_SHEET}!A:G`,
+      valueInputOption: "USER_ENTERED",
+      requestBody: { values: [row] },
+    });
+    return true;
+  } catch (e) {
+    console.error(`Failed to create vendor:`, e);
+    return false;
+  }
+}
+
+export async function updateVendor(vendorId: string, updates: Partial<VendorRow>): Promise<boolean> {
+  const { sheets, sheetId } = await getSheets();
+  try {
+    const res = await sheets.spreadsheets.values.get({
+      spreadsheetId: sheetId,
+      range: `${VENDORS_SHEET}!A:G`,
+    });
+    const rows = res.data.values ?? [];
+    const start = vendorsDataStart(rows);
+    const header = rows[0] ?? [];
+    const hasHeader = start === 1;
+    const vendorIdCol = hasHeader ? headerCol(header, "vendor_id") : 0;
+    const dataStart = hasHeader ? 1 : 0;
+
+    for (let i = dataStart; i < rows.length; i++) {
+      const row = rows[i] ?? [];
+      if (normalizeCell(row[vendorIdCol]) !== vendorId) continue;
+
+      const current = hasHeader ? rowToVendorByHeader(row, header) : rowToVendor(row);
+      const merged: VendorRow = {
+        ...current,
+        ...updates,
+        updated_at: toKoreaTimeString(new Date()),
+      };
+      const newRow = vendorToRow(merged);
+      const range = `${VENDORS_SHEET}!A${i + 1}:G${i + 1}`;
+      await sheets.spreadsheets.values.update({
+        spreadsheetId: sheetId,
+        range,
+        valueInputOption: "USER_ENTERED",
+        requestBody: { values: [newRow] },
+      });
+      return true;
+    }
+    return false;
+  } catch (e) {
+    console.error(`Failed to update vendor:`, e);
+    return false;
+  }
+}
+
+export async function deleteVendor(vendorId: string): Promise<boolean> {
+  const { sheets, sheetId } = await getSheets();
+  try {
+    const res = await sheets.spreadsheets.values.get({
+      spreadsheetId: sheetId,
+      range: `${VENDORS_SHEET}!A:G`,
+    });
+    const rows = res.data.values ?? [];
+    const start = vendorsDataStart(rows);
+    const header = rows[0] ?? [];
+    const hasHeader = start === 1;
+    const vendorIdCol = hasHeader ? headerCol(header, "vendor_id") : 0;
+    const dataStart = hasHeader ? 1 : 0;
+
+    for (let i = dataStart; i < rows.length; i++) {
+      const row = rows[i] ?? [];
+      if (normalizeCell(row[vendorIdCol]) !== vendorId) continue;
+
+      // 행 삭제
+      await sheets.spreadsheets.batchUpdate({
+        spreadsheetId: sheetId,
+        requestBody: {
+          requests: [
+            {
+              deleteDimension: {
+                range: {
+                  sheetId: await getSheetIdByName(sheetId, VENDORS_SHEET),
+                  dimension: "ROWS",
+                  startIndex: i,
+                  endIndex: i + 1,
+                },
+              },
+            },
+          ],
+        },
+      });
+      return true;
+    }
+    return false;
+  } catch (e) {
+    console.error(`Failed to delete vendor:`, e);
+    return false;
+  }
+}
+
+async function getSheetIdByName(spreadsheetId: string, sheetName: string): Promise<number> {
+  const auth = getAuth();
+  const sheets = google.sheets({ version: "v4", auth });
+  const res = await sheets.spreadsheets.get({ spreadsheetId });
+  const sheet = res.data.sheets?.find((s) => s.properties?.title === sheetName);
+  return sheet?.properties?.sheetId ?? 0;
+}

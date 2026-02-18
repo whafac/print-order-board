@@ -229,6 +229,12 @@ export function ListPageClient() {
             <Link href="/list" className="text-base font-medium text-blue-600">제작 의뢰 관리</Link>
             <span className="text-slate-400">|</span>
             <Link href="/specs" className="text-base font-medium text-slate-600 hover:text-slate-800">매체 사양 관리</Link>
+            {userRole === "admin" && (
+              <>
+                <span className="text-slate-400">|</span>
+                <Link href="/vendors" className="text-base font-medium text-slate-600 hover:text-slate-800">제작업체 관리</Link>
+              </>
+            )}
           </div>
           
           {/* 모바일: 햄버거 버튼 */}
