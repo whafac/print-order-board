@@ -209,6 +209,7 @@ export function VendorsPageClient() {
                     <tr className="border-b border-slate-200 bg-slate-50 text-left text-slate-600">
                       <th className="px-4 py-3 font-medium">업체 ID</th>
                       <th className="px-4 py-3 font-medium">업체명</th>
+                      <th className="px-4 py-3 font-medium">PIN 번호</th>
                       <th className="px-4 py-3 font-medium">상태</th>
                       <th className="px-4 py-3 font-medium">생성일</th>
                       <th className="px-4 py-3 font-medium">수정일</th>
@@ -226,6 +227,11 @@ export function VendorsPageClient() {
                         </td>
                         <td className="px-4 py-3 text-slate-900 font-medium">
                           {vendor.vendor_name}
+                        </td>
+                        <td className="px-4 py-3">
+                          <span className="font-mono text-sm text-slate-700">
+                            {vendor.pin || "-"}
+                          </span>
                         </td>
                         <td className="px-4 py-3">
                           <span
@@ -280,13 +286,16 @@ export function VendorsPageClient() {
                     <div className="flex items-start justify-between mb-3">
                       <div className="flex-1">
                         <h3 className="font-medium text-slate-800 mb-1">{vendor.vendor_name}</h3>
-                        <p className="text-xs text-slate-500 font-mono">{vendor.vendor_id}</p>
+                        <p className="text-xs text-slate-500 font-mono mb-1">{vendor.vendor_id}</p>
+                        <p className="text-xs text-slate-600">
+                          PIN: <span className="font-mono text-slate-700">{vendor.pin || "-"}</span>
+                        </p>
                       </div>
                       <span
                         className={`inline-block rounded-full px-2 py-0.5 text-xs font-medium ${
                           vendor.is_active === "TRUE" || vendor.is_active === "true"
                             ? "bg-emerald-100 text-emerald-800"
-                            : "bg-slate-100 text-slate-600"
+                            : "bg-slate-100 text-slate-800"
                         }`}
                       >
                         {vendor.is_active === "TRUE" || vendor.is_active === "true"

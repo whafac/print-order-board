@@ -64,6 +64,7 @@ export async function PATCH(
     const bcrypt = await import("bcrypt");
     const hash = bcrypt.hashSync(body.pin.trim(), 10);
     const hashB64 = Buffer.from(hash, "utf8").toString("base64");
+    updates.pin = body.pin.trim(); // PIN 평문 저장 (관리자 확인용)
     updates.pin_hash_b64 = hashB64;
   }
 

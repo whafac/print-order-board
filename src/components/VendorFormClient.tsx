@@ -51,7 +51,7 @@ export function VendorFormClient({ vendorId }: VendorFormClientProps) {
           setForm({
             vendor_id: data.vendor_id || "",
             vendor_name: data.vendor_name || "",
-            pin: "", // PIN은 표시하지 않음
+            pin: data.pin || "", // PIN 평문 표시 (읽기 전용)
             pin_confirm: "",
             is_active: data.is_active || "TRUE",
           });
@@ -270,18 +270,21 @@ export function VendorFormClient({ vendorId }: VendorFormClientProps) {
                   const val = e.target.value.replace(/\D/g, "").slice(0, 6);
                   setForm({ ...form, pin: val, pin_confirm: val === form.pin_confirm ? val : form.pin_confirm });
                 }}
-                className="flex-1 rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 font-mono text-center text-lg tracking-widest"
+                className="flex-1 rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 font-mono text-center text-lg tracking-widest text-slate-900"
                 placeholder={isEditMode ? "변경하지 않으려면 비워두세요" : "6자리 숫자"}
                 maxLength={6}
+                readOnly={isEditMode && !!form.pin} // 수정 모드에서 기존 PIN이 있으면 읽기 전용
               />
             </div>
             {form.pin && (
               <div className="mt-2 p-2 bg-blue-50 border border-blue-200 rounded-lg">
                 <p className="text-xs text-blue-800 font-medium">
-                  생성된 PIN: <span className="font-mono text-sm">{form.pin}</span>
+                  {isEditMode ? "현재 PIN" : "생성된 PIN"}: <span className="font-mono text-sm">{form.pin}</span>
                 </p>
                 <p className="text-xs text-blue-600 mt-1">
-                  이 PIN 번호를 안전하게 보관하세요. 업체 로그인 시 사용됩니다.
+                  {isEditMode 
+                    ? "PIN 번호를 변경하려면 새 PIN 번호를 입력하거나 'PIN 자동 생성' 버튼을 클릭하세요."
+                    : "이 PIN 번호를 안전하게 보관하세요. 업체 로그인 시 사용됩니다."}
                 </p>
               </div>
             )}

@@ -68,6 +68,7 @@ export interface JobRow {
 export interface VendorRow {
   vendor_id: string;
   vendor_name: string;
+  pin?: string; // PIN 평문 (관리자 확인용)
   pin_hash?: string;
   pin_hash_b64?: string;
   is_active: string; // "TRUE" | "FALSE"
@@ -92,7 +93,7 @@ const JOB_HEADERS: (keyof JobRow)[] = [
 ];
 
 const VENDOR_HEADERS: (keyof VendorRow)[] = [
-  "vendor_id", "vendor_name", "pin_hash", "pin_hash_b64", "is_active", "created_at", "updated_at",
+  "vendor_id", "vendor_name", "pin", "pin_hash", "pin_hash_b64", "is_active", "created_at", "updated_at",
 ];
 
 const VENDOR_PRICING_HEADERS: (keyof VendorPricingRow)[] = [
@@ -628,7 +629,7 @@ export async function getVendors(): Promise<VendorRow[]> {
   try {
     const res = await sheets.spreadsheets.values.get({
       spreadsheetId: sheetId,
-      range: `${VENDORS_SHEET}!A:F`, // 6개 컬럼
+      range: `${VENDORS_SHEET}!A:G`, // 7개 컬럼
     });
     const rows = res.data.values ?? [];
     console.log(`[getVendors] Fetched ${rows.length} rows from ${VENDORS_SHEET}`);
@@ -738,13 +739,13 @@ export async function getVendorPrice(
 // ========== Vendor CRUD 함수 ==========
 
 function vendorToRow(vendor: VendorRow): string[] {
-  // Google Sheets 컬럼 순서: vendor_id, vendor_name, pin_hash_b64, is_active, created_at, updated_at
-  // pin_hash는 선택사항이므로 제외하고 pin_hash_b64만 사용
+  // Google Sheets 컬럼 순서: vendor_id, vendor_name, pin (평문), pin_hash_b64, is_active, created_at, updated_at
   return [
     vendor.vendor_id,
     vendor.vendor_name,
-    vendor.pin_hash_b64 ?? "", // C 컬럼
-    vendor.is_active ?? "TRUE", // D 컬럼
+    vendor.pin ?? "", // C 컬럼: PIN 평문 (관리자 확인용)
+    vendor.pin_hash_b64 ?? "", // D 컬럼: PIN 해시
+    vendor.is_active ?? "TRUE", // E 컬럼
     vendor.created_at ?? "",
     vendor.updated_at ?? "",
   ];
@@ -762,7 +763,7 @@ export async function createVendor(vendor: Omit<VendorRow, "created_at" | "updat
   try {
     await sheets.spreadsheets.values.append({
       spreadsheetId: sheetId,
-      range: `${VENDORS_SHEET}!A:F`, // vendor_id, vendor_name, pin_hash_b64, is_active, created_at, updated_at (6개 컬럼)
+      range: `${VENDORS_SHEET}!A:G`, // vendor_id, vendor_name, pin, pin_hash_b64, is_active, created_at, updated_at (7개 컬럼)
       valueInputOption: "USER_ENTERED",
       requestBody: { values: [row] },
     });
@@ -778,7 +779,7 @@ export async function updateVendor(vendorId: string, updates: Partial<VendorRow>
   try {
     const res = await sheets.spreadsheets.values.get({
       spreadsheetId: sheetId,
-      range: `${VENDORS_SHEET}!A:F`, // 6개 컬럼
+      range: `${VENDORS_SHEET}!A:G`, // 7개 컬럼
     });
     const rows = res.data.values ?? [];
     const start = vendorsDataStart(rows);
@@ -798,7 +799,7 @@ export async function updateVendor(vendorId: string, updates: Partial<VendorRow>
         updated_at: toKoreaTimeString(new Date()),
       };
       const newRow = vendorToRow(merged);
-      const range = `${VENDORS_SHEET}!A${i + 1}:F${i + 1}`; // 6개 컬럼
+      const range = `${VENDORS_SHEET}!A${i + 1}:G${i + 1}`; // 7개 컬럼
       await sheets.spreadsheets.values.update({
         spreadsheetId: sheetId,
         range,
@@ -819,7 +820,7 @@ export async function deleteVendor(vendorId: string): Promise<boolean> {
   try {
     const res = await sheets.spreadsheets.values.get({
       spreadsheetId: sheetId,
-      range: `${VENDORS_SHEET}!A:F`, // 6개 컬럼
+      range: `${VENDORS_SHEET}!A:G`, // 7개 컬럼
     });
     const rows = res.data.values ?? [];
     const start = vendorsDataStart(rows);

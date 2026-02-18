@@ -56,6 +56,7 @@ export async function POST(request: NextRequest) {
   const vendor: Omit<VendorRow, "created_at" | "updated_at"> = {
     vendor_id: vendor_id.trim(),
     vendor_name: vendor_name.trim(),
+    pin: pin.trim(), // PIN 평문 저장 (관리자 확인용)
     pin_hash_b64: hashB64,
     is_active: is_active === "FALSE" ? "FALSE" : "TRUE",
   };
