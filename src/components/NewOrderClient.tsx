@@ -265,6 +265,22 @@ export function NewOrderClient() {
       setPackagingDelivery("");
       setFileRule("");
       setAdditionalInnerPages([]);
+      if (mediaId === MEDIA_OTHER) {
+        setDefaultValues({
+          trimSize: "",
+          coverType: "",
+          coverPaper: "",
+          coverPrint: "",
+          innerPages: "",
+          innerPaper: "",
+          innerPrint: "",
+          binding: "",
+          finishingSpec: "",
+          packagingDelivery: "",
+          fileRule: "",
+          additionalInnerPages: [],
+        });
+      }
       return;
     }
     const s = specs.find((x) => x.media_id === mediaId) ?? null;
@@ -1290,9 +1306,14 @@ export function NewOrderClient() {
             </section>
           )}
 
-          {orderType === "book" && spec && (
+          {orderType === "book" && (spec || mediaId === MEDIA_OTHER) && (
             <section className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm space-y-4">
-              <h2 className="text-sm font-medium text-slate-500">제작 사양</h2>
+              <h2 className="text-sm font-medium text-slate-500">
+                제작 사양
+                {mediaId === MEDIA_OTHER && (
+                  <span className="ml-2 text-xs font-normal text-amber-600">(기타 - 직접 입력)</span>
+                )}
+              </h2>
               <div className="grid grid-cols-1 gap-3 text-sm sm:grid-cols-2">
                 <label className="block">
                   <span className="block text-sm text-slate-600 mb-1">판형</span>
