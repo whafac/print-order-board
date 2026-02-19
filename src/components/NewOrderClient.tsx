@@ -1044,6 +1044,16 @@ export function NewOrderClient() {
                     ))}
                     <option value={MEDIA_OTHER}>기타</option>
                   </select>
+                  {mediaId === MEDIA_OTHER && (
+                    <input
+                      ref={bookOrdererNameInputRef}
+                      type="text"
+                      value={bookOtherMediaName}
+                      onChange={(e) => setBookOtherMediaName(e.target.value)}
+                      placeholder="매체명을 입력하세요"
+                      className="input-dark mt-2 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm placeholder:text-slate-500"
+                    />
+                  )}
                   {specs.length === 0 && mediaId !== MEDIA_OTHER && (
                     <p className="mt-1 text-xs text-amber-600">
                       등록된 매체가 없습니다.{" "}
@@ -1051,19 +1061,6 @@ export function NewOrderClient() {
                     </p>
                   )}
                 </label>
-                {mediaId === MEDIA_OTHER && (
-                  <label className="block">
-                    <span className="block text-sm text-slate-600 mb-1">매체명</span>
-                    <input
-                      ref={bookOrdererNameInputRef}
-                      type="text"
-                      value={bookOtherMediaName}
-                      onChange={(e) => setBookOtherMediaName(e.target.value)}
-                      placeholder="매체명을 입력하세요"
-                      className="input-dark w-full rounded-lg border border-slate-300 px-3 py-2 text-sm placeholder:text-slate-500"
-                    />
-                  </label>
-                )}
                 {mediaId && (
                   <label className="block">
                     <span className="block text-sm text-slate-600 mb-1">발주사 (매체ID)</span>
