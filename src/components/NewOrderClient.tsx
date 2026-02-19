@@ -1044,16 +1044,21 @@ export function NewOrderClient() {
                     ))}
                     <option value={MEDIA_OTHER}>기타</option>
                   </select>
-                  {mediaId === MEDIA_OTHER && (
-                    <input
-                      ref={bookOrdererNameInputRef}
-                      type="text"
-                      value={bookOtherMediaName}
-                      onChange={(e) => setBookOtherMediaName(e.target.value)}
-                      placeholder="매체명을 입력하세요"
-                      className="input-dark mt-2 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm placeholder:text-slate-500"
-                    />
-                  )}
+                  <div
+                    className="grid transition-[grid-template-rows] duration-200 ease-out"
+                    style={{ gridTemplateRows: mediaId === MEDIA_OTHER ? "1fr" : "0fr" }}
+                  >
+                    <div className="overflow-hidden">
+                      <input
+                        ref={bookOrdererNameInputRef}
+                        type="text"
+                        value={bookOtherMediaName}
+                        onChange={(e) => setBookOtherMediaName(e.target.value)}
+                        placeholder="매체명을 입력하세요"
+                        className="input-dark mt-2 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm placeholder:text-slate-500"
+                      />
+                    </div>
+                  </div>
                   {specs.length === 0 && mediaId !== MEDIA_OTHER && (
                     <p className="mt-1 text-xs text-amber-600">
                       등록된 매체가 없습니다.{" "}
