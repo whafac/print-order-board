@@ -667,11 +667,7 @@ export function NewOrderClient({
       setTimeout(() => focusField(keys[0]), 0);
       return;
     }
-    if (editJobId) {
-      doSubmit();
-    } else {
-      openPreviewWindow();
-    }
+    openPreviewWindow();
   }
 
   function esc(s: string): string {
@@ -970,8 +966,8 @@ export function NewOrderClient({
 </head>
 <body>
   <div class="wrap">
-    <div class="badge">미리보기 창</div>
-    <h1>의뢰 내용 미리보기</h1>
+    <div class="badge">${editJobId ? "미리보기 창 (수정)" : "미리보기 창"}</div>
+    <h1>${editJobId ? "의뢰 수정 내용 미리보기" : "의뢰 내용 미리보기"}</h1>
     <p style="font-size:0.875rem;color:#64748b;margin:0 0 16px;">아래 내용을 확인한 뒤 확인 시 제출됩니다.</p>
     <div class="block">
       <h3 class="sec">입력 내용</h3>
@@ -1014,7 +1010,7 @@ export function NewOrderClient({
     </div>`;
     })()}
     <div class="actions">
-      <button type="button" class="btn btn-primary" id="btn-confirm">확인 (제출)</button>
+      <button type="button" class="btn btn-primary" id="btn-confirm">${editJobId ? "확인 (수정 적용)" : "확인 (제출)"}</button>
       <button type="button" class="btn btn-secondary" id="btn-cancel">취소</button>
     </div>
   </div>
