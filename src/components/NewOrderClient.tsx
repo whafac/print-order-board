@@ -71,7 +71,7 @@ export function NewOrderClient() {
   const [fileLink, setFileLink] = useState("");
   const [changesNote, setChangesNote] = useState("");
   const [spec, setSpec] = useState<Spec | null>(null);
-  const [bookOtherMediaName, setBookOtherMediaName] = useState("");
+  const [bookOrdererName, setBookOrdererName] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [toast, setToast] = useState<"ok" | "err" | null>(null);
   const previewWindowRef = useRef<Window | null>(null);
@@ -171,6 +171,7 @@ export function NewOrderClient() {
   const paperNameWrapperRef = useRef<HTMLDivElement>(null);
   const paperWeightWrapperRef = useRef<HTMLDivElement>(null);
   const paperColorWrapperRef = useRef<HTMLDivElement>(null);
+  const bookOrdererNameInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     // 의뢰자 이름은 페이지 로드 시 빈칸으로 시작 (이전 값 자동 입력 방지)
@@ -349,6 +350,12 @@ export function NewOrderClient() {
     }
   }, [mediaId, specs]);
 
+  useEffect(() => {
+    if (mediaId === MEDIA_OTHER && orderType === "book") {
+      bookOrdererNameInputRef.current?.focus();
+    }
+  }, [mediaId, orderType]);
+
   // 추가 내지 관리 함수
   function addAdditionalInnerPage() {
     setAdditionalInnerPages([...additionalInnerPages, { type: "", pages: "", paper: "", print: "" }]);
@@ -432,7 +439,7 @@ export function NewOrderClient() {
     if (!vendor.trim()) missing.push("제작업체");
     if (orderType === "book") {
       if (!mediaId) missing.push("매체");
-      if (mediaId === MEDIA_OTHER && !bookOtherMediaName.trim()) missing.push("매체명 (기타)");
+      if (mediaId === MEDIA_OTHER && !bookOrdererName.trim()) missing.push("발주사명");
       if (!qty.trim()) missing.push("수량");
     } else {
       if (!sheetMediaName.trim()) missing.push("매체명");
@@ -631,7 +638,7 @@ export function NewOrderClient() {
     };
     const orderTypeLabel = orderType === "book" ? "책자" : "낱장 인쇄물";
     const mediaDisplay = orderType === "book"
-      ? (mediaId === MEDIA_OTHER ? (bookOtherMediaName.trim() || "-") : (spec?.media_name ?? mediaId) || "-")
+      ? (mediaId === MEDIA_OTHER ? (bookOrdererName.trim() || "-") : (spec?.media_name ?? mediaId) || "-")
       : (sheetMediaName.trim() || "낱장 인쇄물");
     const qtyDisplay = orderType === "book" ? (qty.trim() || "-") : `${kindsCountStr}종 ${sheetsPerKindStr}매`;
     const sheetBlock =
@@ -761,7 +768,7 @@ export function NewOrderClient() {
       <dl class="grid">
         <div><dt>제작 유형</dt><dd>${esc(orderTypeLabel)}</dd></div>
         <div><dt>의뢰자</dt><dd>${esc(requesterName.trim() || "-")}</dd></div>
-        <div><dt>${orderType === "book" ? "매체" : "매체명"}</dt><dd>${esc(mediaDisplay)}</dd></div>
+        ${orderType === "book" ? `<div><dt>발주사</dt><dd>${esc(bookOrdererName.trim() || "-")}</dd></div><div><dt>매체</dt><dd>${esc(mediaDisplay)}</dd></div>` : `<div><dt>매체명</dt><dd>${esc(mediaDisplay)}</dd></div>`}
         <div><dt>제작업체</dt><dd>${esc(vendor.trim() || "-")}</dd></div>
         <div><dt>납기일</dt><dd>${esc(dueDate || "-")}</dd></div>
         <div><dt>수량</dt><dd>${esc(qtyDisplay)}</dd></div>
@@ -849,11 +856,11 @@ export function NewOrderClient() {
       };
       if (orderType === "book") {
         payload.media_id = mediaId;
-        payload.media_name = mediaId === MEDIA_OTHER ? bookOtherMediaName.trim() : undefined;
+        payload.media_name = mediaId === MEDIA_OTHER ? bookOrdererName.trim() : undefined;
         payload.qty = qty.trim();
         const specSnapshot: Record<string, unknown> = {
           media_id: mediaId,
-          media_name: mediaId === MEDIA_OTHER ? bookOtherMediaName.trim() : (spec?.media_name || ""),
+          media_name: mediaId === MEDIA_OTHER ? bookOrdererName.trim() : (spec?.media_name || ""),
           default_vendor: spec?.default_vendor || "",
           trim_size: trimSize.trim(),
           cover_type: coverType.trim(),
@@ -1020,6 +1027,17 @@ export function NewOrderClient() {
             {orderType === "book" ? (
               <>
                 <label className="block">
+                  <span className="block text-sm text-slate-600 mb-1">발주사</span>
+                  <input
+                    ref={bookOrdererNameInputRef}
+                    type="text"
+                    value={bookOrdererName}
+                    onChange={(e) => setBookOrdererName(e.target.value)}
+                    placeholder={mediaId === MEDIA_OTHER ? "발주사를 입력하세요" : "발주사 (선택)"}
+                    className="input-dark w-full rounded-lg border border-slate-300 px-3 py-2 text-sm placeholder:text-slate-500"
+                  />
+                </label>
+                <label className="block">
                   <span className="block text-sm text-slate-600 mb-1">매체</span>
                   <select
                     value={mediaId}
@@ -1031,25 +1049,13 @@ export function NewOrderClient() {
                     {specs.map((s) => (
                       <option key={s.media_id} value={s.media_id}>{s.media_name}</option>
                     ))}
-                    <option value={MEDIA_OTHER}>기타</option>
+                    <option value={MEDIA_OTHER}>{bookOrdererName.trim() || "기타"}</option>
                   </select>
                   {specs.length === 0 && mediaId !== MEDIA_OTHER && (
                     <p className="mt-1 text-xs text-amber-600">
                       등록된 매체가 없습니다.{" "}
                       <Link href="/specs" className="underline">매체 사양 관리</Link>에서 먼저 매체를 추가해 주세요.
                     </p>
-                  )}
-                  {mediaId === MEDIA_OTHER && (
-                    <label className="mt-3 block">
-                      <span className="block text-sm text-slate-600 mb-1">매체명 (기타 직접 입력)</span>
-                      <input
-                        type="text"
-                        value={bookOtherMediaName}
-                        onChange={(e) => setBookOtherMediaName(e.target.value)}
-                        placeholder="매체명을 입력하세요"
-                        className="input-dark w-full rounded-lg border border-slate-300 px-3 py-2 text-sm placeholder:text-slate-500"
-                      />
-                    </label>
                   )}
                 </label>
                 <label className="block">
