@@ -298,7 +298,7 @@ export function JobDetailClient({ job }: { job: Job }) {
                 <div><dt className="text-slate-500">매체명</dt><dd className="text-slate-800">{job.media_name || "-"}</dd></div>
               </>
             )}
-            <div><dt className="text-slate-500">출력실</dt><dd className="text-slate-800">{job.vendor || "-"}</dd></div>
+            <div><dt className="text-slate-500">제작업체</dt><dd className="text-slate-800">{job.vendor || "-"}</dd></div>
             <div><dt className="text-slate-500">납기</dt><dd className="text-slate-800">{job.due_date ? job.due_date.slice(0, 10) : "-"}</dd></div>
             <div><dt className="text-slate-500">수량</dt><dd className="text-slate-800">{job.qty || "-"}</dd></div>
             <div className="sm:col-span-2">

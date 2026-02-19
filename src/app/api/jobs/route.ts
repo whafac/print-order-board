@@ -91,11 +91,24 @@ export async function POST(request: NextRequest) {
       type_spec_snapshot = "";
     } else {
       const spec = await getSpecByMediaId(media_id_req);
-      if (!spec) return NextResponse.json({ error: "Unknown media_id" }, { status: 400 });
       media_id = media_id_req;
-      media_name = spec.media_name;
-      vendor = body.vendor?.trim() || spec.default_vendor;
-      spec_snapshot = body.spec_snapshot?.trim() || JSON.stringify(spec);
+      if (spec) {
+        media_name = spec.media_name;
+        vendor = body.vendor?.trim() || spec.default_vendor;
+        spec_snapshot = body.spec_snapshot?.trim() || JSON.stringify(spec);
+      } else {
+        const custom_spec = body.spec_snapshot?.trim();
+        if (!custom_spec) return NextResponse.json({ error: "Unknown media_id and spec_snapshot required" }, { status: 400 });
+        try {
+          const parsed = JSON.parse(custom_spec) as { media_name?: string; default_vendor?: string };
+          media_name = parsed.media_name?.trim() || media_id_req;
+          vendor = body.vendor?.trim() || parsed.default_vendor?.trim() || "";
+        } catch {
+          media_name = media_id_req;
+          vendor = body.vendor?.trim() || "";
+        }
+        spec_snapshot = custom_spec;
+      }
       type_spec_snapshot = "";
     }
   }

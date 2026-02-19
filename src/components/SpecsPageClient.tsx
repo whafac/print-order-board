@@ -379,7 +379,6 @@ export function SpecsPageClient() {
                     type="text"
                     value={form[key]}
                     onChange={(e) => setForm((f) => ({ ...f, [key]: e.target.value }))}
-                    disabled={editing !== null && key === "media_id"}
                     className="input-dark w-full rounded border border-slate-300 px-2 py-1.5 text-sm disabled:bg-slate-100"
                   />
                 </label>
