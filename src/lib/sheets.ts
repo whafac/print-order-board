@@ -575,6 +575,52 @@ export async function getJobById(jobId: string): Promise<JobRow | null> {
   return null;
 }
 
+const JOB_CONTENT_KEYS: (keyof JobRow)[] = [
+  "requester_name", "media_id", "media_name", "vendor", "due_date", "qty",
+  "file_link", "changes_note", "spec_snapshot", "type_spec_snapshot",
+  "status", "last_updated_by", "production_cost",
+];
+
+export async function updateJobContent(jobId: string, updates: Partial<JobRow>): Promise<boolean> {
+  const { sheets, sheetId } = await getSheets();
+  const res = await sheets.spreadsheets.values.get({
+    spreadsheetId: sheetId,
+    range: `${JOBS_SHEET}!A:R`,
+  });
+  const rows = res.data.values ?? [];
+  if (rows.length === 0) return false;
+  const header = rows[0] ?? [];
+  const hasHeader = headerCol(header, "job_id") !== -1;
+  const jobIdCol = hasHeader ? headerCol(header, "job_id") : 0;
+  const dataStart = hasHeader ? 1 : 0;
+
+  for (let i = dataStart; i < rows.length; i++) {
+    const row = rows[i] ?? [];
+    if ((row[jobIdCol] ?? "").toString().trim() !== jobId.trim()) continue;
+    const newRow: string[] = [...row];
+    while (newRow.length < header.length) newRow.push("");
+
+    const lastUpdatedAtCol = headerCol(header, "last_updated_at");
+    if (lastUpdatedAtCol >= 0) newRow[lastUpdatedAtCol] = new Date().toISOString();
+
+    for (const key of JOB_CONTENT_KEYS) {
+      if (updates[key] === undefined) continue;
+      const col = headerCol(header, key);
+      if (col >= 0) newRow[col] = String(updates[key] ?? "");
+    }
+
+    const range = `${JOBS_SHEET}!A${i + 1}:R${i + 1}`;
+    await sheets.spreadsheets.values.update({
+      spreadsheetId: sheetId,
+      range,
+      valueInputOption: "USER_ENTERED",
+      requestBody: { values: [newRow] },
+    });
+    return true;
+  }
+  return false;
+}
+
 export async function updateJob(
   jobId: string,
   updates: { status?: string; last_updated_by?: string; production_cost?: string }

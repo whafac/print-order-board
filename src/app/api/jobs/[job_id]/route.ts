@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getJobById, updateJob } from "@/lib/sheets";
+import { getJobById, updateJob, updateJobContent } from "@/lib/sheets";
 
 export async function GET(
   _request: NextRequest,
@@ -21,19 +21,32 @@ export async function PATCH(
   { params }: { params: Promise<{ job_id: string }> }
 ) {
   const { job_id } = await params;
-  let body: { status?: string; last_updated_by?: string; production_cost?: string };
+  let body: Record<string, unknown>;
   try {
     body = await request.json();
   } catch {
     return NextResponse.json({ error: "Invalid body" }, { status: 400 });
   }
+
+  const isContentUpdate = "requester_name" in body || "order_type" in body || "spec_snapshot" in body || "type_spec_snapshot" in body;
+
   try {
-    const ok = await updateJob(job_id, {
-      status: body.status,
-      last_updated_by: body.last_updated_by,
-      production_cost: body.production_cost,
-    });
-    if (!ok) return NextResponse.json({ error: "Not found" }, { status: 404 });
+    if (isContentUpdate) {
+      const updates: Record<string, string> = {};
+      const keys = ["requester_name", "media_id", "media_name", "vendor", "due_date", "qty", "file_link", "changes_note", "spec_snapshot", "type_spec_snapshot", "last_updated_by"];
+      for (const k of keys) {
+        if (body[k] !== undefined) updates[k] = String(body[k] ?? "");
+      }
+      const ok = await updateJobContent(job_id, updates);
+      if (!ok) return NextResponse.json({ error: "Not found" }, { status: 404 });
+    } else {
+      const ok = await updateJob(job_id, {
+        status: body.status as string | undefined,
+        last_updated_by: body.last_updated_by as string | undefined,
+        production_cost: body.production_cost as string | undefined,
+      });
+      if (!ok) return NextResponse.json({ error: "Not found" }, { status: 404 });
+    }
     return NextResponse.json({ ok: true });
   } catch (e) {
     console.error(e);

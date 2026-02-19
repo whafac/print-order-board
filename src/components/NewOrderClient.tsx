@@ -58,7 +58,24 @@ interface Vendor {
   is_active: string;
 }
 
-export function NewOrderClient() {
+interface InitialJob {
+  order_type?: string;
+  requester_name: string;
+  media_id?: string;
+  media_name: string;
+  vendor: string;
+  due_date: string;
+  qty: string;
+  file_link: string;
+  changes_note: string;
+  spec_snapshot: string;
+  type_spec_snapshot?: string;
+}
+
+export function NewOrderClient({
+  initialJob,
+  editJobId,
+}: { initialJob?: InitialJob; editJobId?: string } = {}) {
   const router = useRouter();
   const [specs, setSpecs] = useState<Spec[]>([]);
   const [vendors, setVendors] = useState<Vendor[]>([]);
@@ -184,6 +201,64 @@ export function NewOrderClient() {
   const sheetOrdererInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
+    if (!initialJob) return;
+    setOrderType((initialJob.order_type as "book" | "sheet") || "book");
+    setRequesterName(initialJob.requester_name || "");
+    setVendor(initialJob.vendor || "");
+    setDueDate(initialJob.due_date?.slice(0, 10) || "");
+    setFileLink(initialJob.file_link || "");
+    setChangesNote(initialJob.changes_note || "");
+
+    if (initialJob.order_type === "sheet") {
+      setSheetMediaName(initialJob.media_name || "낱장 인쇄물");
+      setSheetOrdererName(initialJob.media_id && initialJob.media_id !== "sheet" ? initialJob.media_id : "");
+      try {
+        const ts = initialJob.type_spec_snapshot ? JSON.parse(initialJob.type_spec_snapshot) : {};
+        setSize(String(ts.size ?? ""));
+        setPaperName(String(ts.paper_name ?? ""));
+        setPaperWeight(String(ts.paper_weight ?? ""));
+        setPaperColor(String(ts.paper_color ?? ""));
+        setPrintSide((ts.print_side as "단면" | "양면") || "양면");
+        setPrintColor((ts.print_color as "먹1도" | "컬러") || "컬러");
+        setCutting((ts.cutting as "필요없음" | "정재단") || "정재단");
+        setKindsCountStr(String(ts.kinds_count ?? "1"));
+        setSheetsPerKindStr(String(ts.sheets_per_kind ?? "1"));
+        setExtraRequest(String(ts.extra_request ?? ""));
+        setReceiveMethod((ts.receive_method as "완료시 전화요망" | "완료시 방문수령") || "완료시 전화요망");
+        const fin = ts.finishing;
+        if (Array.isArray(fin)) {
+          const obj: Record<string, boolean> = { "없음": fin.includes("없음") || fin.length === 0 };
+          SHEET_FINISHING_OPTIONS.forEach((k) => { obj[k] = fin.includes(k); });
+          if (fin.some((s: string) => typeof s === "string" && s.startsWith("기타:"))) obj["기타"] = true;
+          setFinishing(obj);
+        }
+      } catch {}
+    } else {
+      setMediaId(initialJob.media_id === "other" ? MEDIA_OTHER : (initialJob.media_id || ""));
+      setBookOrdererName(initialJob.media_id && initialJob.media_id !== "other" ? initialJob.media_id : "");
+      setBookOtherMediaName(initialJob.media_id === "other" ? (initialJob.media_name || "") : "");
+      setQty(initialJob.qty || "");
+      try {
+        const sp = initialJob.spec_snapshot ? JSON.parse(initialJob.spec_snapshot) : {};
+        setBookOrdererName(sp.media_id || initialJob.media_id || "");
+        setTrimSize(String(sp.trim_size ?? ""));
+        setCoverType(String(sp.cover_type ?? ""));
+        setCoverPaper(String(sp.cover_paper ?? ""));
+        setCoverPrint(String(sp.cover_print ?? sp.print_color ?? ""));
+        setInnerPages(String(sp.inner_pages ?? sp.pages ?? ""));
+        setInnerPaper(String(sp.inner_paper ?? ""));
+        setInnerPrint(String(sp.inner_print ?? sp.print_color ?? ""));
+        setBinding(String(sp.binding ?? ""));
+        setFinishingSpec(String(sp.finishing ?? ""));
+        setPackagingDelivery(String(sp.packaging_delivery ?? ""));
+        setFileRule(String(sp.file_rule ?? ""));
+        const addl = sp.additional_inner_pages;
+        if (Array.isArray(addl)) setAdditionalInnerPages(addl);
+      } catch {}
+    }
+  }, [initialJob]);
+
+  useEffect(() => {
     // 의뢰자 이름은 페이지 로드 시 빈칸으로 시작 (이전 값 자동 입력 방지)
     // setRequesterName(getStoredRequester()); // 제거: 여러 사용자가 이전 의뢰자 이름을 그대로 사용하는 오류 방지
     Promise.all([
@@ -296,11 +371,13 @@ export function NewOrderClient() {
     }
     const s = specs.find((x) => x.media_id === mediaId) ?? null;
     setSpec(s);
-    setVendor(s?.default_vendor ?? "");
-    if (mediaId !== MEDIA_OTHER && s) {
-      setBookOrdererName(s.media_id || "");
+    if (!editJobId) {
+      setVendor(s?.default_vendor ?? "");
+      if (mediaId !== MEDIA_OTHER && s) {
+        setBookOrdererName(s.media_id || "");
+      }
     }
-    if (s) {
+    if (s && !editJobId) {
       setTrimSize(s.trim_size || "");
       setCoverType(s.cover_type || "");
       setCoverPaper(s.cover_paper || "");
@@ -344,7 +421,7 @@ export function NewOrderClient() {
         fileRule: s.file_rule || "",
         additionalInnerPages: defaultAdditionalPages,
       });
-    } else {
+    } else if (!editJobId) {
       // 매체가 선택되지 않았을 때 기본값 초기화
       setDefaultValues({
         trimSize: "",
@@ -361,7 +438,7 @@ export function NewOrderClient() {
         additionalInnerPages: [],
       });
     }
-  }, [mediaId, specs]);
+  }, [mediaId, specs, editJobId]);
 
   useEffect(() => {
     if (mediaId === MEDIA_OTHER && orderType === "book") {
@@ -565,7 +642,11 @@ export function NewOrderClient() {
       setTimeout(() => focusField(keys[0]), 0);
       return;
     }
-    openPreviewWindow();
+    if (editJobId) {
+      doSubmit();
+    } else {
+      openPreviewWindow();
+    }
   }
 
   function esc(s: string): string {
@@ -877,7 +958,7 @@ export function NewOrderClient() {
         <div><dt>납기일</dt><dd>${esc(dueDate || "-")}</dd></div>
         <div><dt>수량</dt><dd>${esc(qtyDisplay)}</dd></div>
         <div class="full"><dt>파일 링크</dt><dd>${esc(fileLink.trim() || "-")}</dd></div>
-        <div class="full"><dt>변경 및 요청 사항</dt><dd>${esc(changesNote.trim() || "없음")}</dd></div>
+        <div class="full"><dt>변경 및 요청사항</dt><dd>${esc(changesNote.trim() || "없음")}</dd></div>
       </dl>
     </div>
     ${sheetBlock}
@@ -1001,7 +1082,7 @@ export function NewOrderClient() {
               ...SHEET_FINISHING_OPTIONS.filter((k) => finishing[k]),
               ...(finishing["기타"] && finishingEtc.trim() ? [`기타: ${finishingEtc.trim()}`] : []),
             ];
-        payload.type_spec = {
+        const typeSpec = {
           size: size.trim(),
           paper_name: paperName.trim(),
           paper_weight: paperWeight.trim(),
@@ -1015,7 +1096,43 @@ export function NewOrderClient() {
           extra_request: extraRequest.trim() || "없음",
           receive_method: receiveMethod,
         };
+        payload.type_spec = typeSpec;
+        if (editJobId) payload.type_spec_snapshot = JSON.stringify(typeSpec);
       }
+      if (editJobId) {
+        const patchBody: Record<string, string> = {
+          requester_name: requesterName.trim(),
+          media_id: String(payload.media_id || ""),
+          media_name: String(payload.media_name || ""),
+          vendor: String(payload.vendor || ""),
+          due_date: dueDate,
+          qty: String(payload.qty || ""),
+          file_link: fileLink.trim() || "",
+          changes_note: changesNote.trim() || "없음",
+          last_updated_by: requesterName.trim() || "의뢰자",
+        };
+        if (payload.spec_snapshot) patchBody.spec_snapshot = String(payload.spec_snapshot);
+        if (payload.type_spec_snapshot) patchBody.type_spec_snapshot = String(payload.type_spec_snapshot);
+        const res = await fetch(`/api/jobs/${editJobId}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(patchBody),
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) {
+          const errorMsg = data.error || "의뢰 수정에 실패했습니다.";
+          console.error("API error:", errorMsg);
+          setToast("err");
+          setTimeout(() => setToast(null), 3000);
+          return;
+        }
+        setToast("ok");
+        window.alert("의뢰서가 정상적으로 수정되었습니다.");
+        router.push(`/jobs/${editJobId}`);
+        router.refresh();
+        return;
+      }
+
       const res = await fetch("/api/jobs", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -1071,8 +1188,11 @@ export function NewOrderClient() {
     <>
       <header className="sticky top-0 z-10 border-b border-slate-200 bg-white/95 backdrop-blur">
         <div className="mx-auto flex max-w-2xl items-center justify-between px-4 py-3">
-          <Link href="/list" className="rounded-lg bg-slate-800 px-4 py-2 text-sm font-medium text-white hover:bg-slate-700">
-            홈으로
+          <Link
+            href={editJobId ? `/jobs/${editJobId}` : "/list"}
+            className="rounded-lg bg-slate-800 px-4 py-2 text-sm font-medium text-white hover:bg-slate-700"
+          >
+            {editJobId ? "← 의뢰 상세" : "홈으로"}
           </Link>
           <div className="flex items-center gap-3">
             <span className="text-sm text-emerald-600">잠금해제됨 ✔</span>
@@ -1088,7 +1208,7 @@ export function NewOrderClient() {
       </header>
 
       <div className="mx-auto max-w-2xl px-4 py-6">
-        <h1 className="text-lg font-semibold text-slate-800 mb-6">새 의뢰 등록</h1>
+        <h1 className="text-lg font-semibold text-slate-800 mb-6">{editJobId ? "의뢰 수정" : "새 의뢰 등록"}</h1>
 
         <form onSubmit={handleSubmit} className="space-y-6">
           <section className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
@@ -1258,7 +1378,7 @@ export function NewOrderClient() {
               />
             </label>
             <label className="block">
-              <span className="block text-sm text-slate-600 mb-1">변경 및 요청 사항</span>
+              <span className="block text-sm text-slate-600 mb-1">변경 및 요청사항</span>
               <textarea
                 value={changesNote}
                 onChange={(e) => setChangesNote(e.target.value)}
