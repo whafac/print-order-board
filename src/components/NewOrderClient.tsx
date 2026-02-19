@@ -768,7 +768,7 @@ export function NewOrderClient() {
       <dl class="grid">
         <div><dt>제작 유형</dt><dd>${esc(orderTypeLabel)}</dd></div>
         <div><dt>의뢰자</dt><dd>${esc(requesterName.trim() || "-")}</dd></div>
-        ${orderType === "book" ? `<div><dt>발주사</dt><dd>${esc(bookOrdererName.trim() || "-")}</dd></div><div><dt>매체</dt><dd>${esc(mediaDisplay)}</dd></div>` : `<div><dt>매체명</dt><dd>${esc(mediaDisplay)}</dd></div>`}
+        ${orderType === "book" ? `<div><dt>발주사 (매체ID)</dt><dd>${esc(mediaId === MEDIA_OTHER ? (bookOrdererName.trim() || "-") : (spec?.media_id || "-"))}</dd></div><div><dt>매체</dt><dd>${esc(mediaDisplay)}</dd></div>` : `<div><dt>매체명</dt><dd>${esc(mediaDisplay)}</dd></div>`}
         <div><dt>제작업체</dt><dd>${esc(vendor.trim() || "-")}</dd></div>
         <div><dt>납기일</dt><dd>${esc(dueDate || "-")}</dd></div>
         <div><dt>수량</dt><dd>${esc(qtyDisplay)}</dd></div>
@@ -1027,17 +1027,6 @@ export function NewOrderClient() {
             {orderType === "book" ? (
               <>
                 <label className="block">
-                  <span className="block text-sm text-slate-600 mb-1">발주사</span>
-                  <input
-                    ref={bookOrdererNameInputRef}
-                    type="text"
-                    value={bookOrdererName}
-                    onChange={(e) => setBookOrdererName(e.target.value)}
-                    placeholder={mediaId === MEDIA_OTHER ? "발주사를 입력하세요" : "발주사 (선택)"}
-                    className="input-dark w-full rounded-lg border border-slate-300 px-3 py-2 text-sm placeholder:text-slate-500"
-                  />
-                </label>
-                <label className="block">
                   <span className="block text-sm text-slate-600 mb-1">매체</span>
                   <select
                     value={mediaId}
@@ -1049,7 +1038,7 @@ export function NewOrderClient() {
                     {specs.map((s) => (
                       <option key={s.media_id} value={s.media_id}>{s.media_name}</option>
                     ))}
-                    <option value={MEDIA_OTHER}>{bookOrdererName.trim() || "기타"}</option>
+                    <option value={MEDIA_OTHER}>기타</option>
                   </select>
                   {specs.length === 0 && mediaId !== MEDIA_OTHER && (
                     <p className="mt-1 text-xs text-amber-600">
@@ -1058,6 +1047,25 @@ export function NewOrderClient() {
                     </p>
                   )}
                 </label>
+                {mediaId && (
+                  <label className="block">
+                    <span className="block text-sm text-slate-600 mb-1">발주사 (매체ID)</span>
+                    {mediaId === MEDIA_OTHER ? (
+                      <input
+                        ref={bookOrdererNameInputRef}
+                        type="text"
+                        value={bookOrdererName}
+                        onChange={(e) => setBookOrdererName(e.target.value)}
+                        placeholder="발주사를 입력하세요"
+                        className="input-dark w-full rounded-lg border border-slate-300 px-3 py-2 text-sm placeholder:text-slate-500"
+                      />
+                    ) : (
+                      <div className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-800">
+                        {spec?.media_id || "-"}
+                      </div>
+                    )}
+                  </label>
+                )}
                 <label className="block">
                   <span className="block text-sm text-slate-600 mb-1">수량</span>
                   <input
