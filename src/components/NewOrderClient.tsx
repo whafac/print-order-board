@@ -148,6 +148,7 @@ export function NewOrderClient() {
 
   // 낱장 전용
   const [sheetMediaName, setSheetMediaName] = useState("낱장 인쇄물");
+  const [sheetOrdererName, setSheetOrdererName] = useState("");
   const [size, setSize] = useState("");
   const [paperName, setPaperName] = useState("");
   const [paperWeight, setPaperWeight] = useState("");
@@ -180,6 +181,7 @@ export function NewOrderClient() {
   const bookOrdererInputRef = useRef<HTMLInputElement>(null);
   const qtyInputRef = useRef<HTMLInputElement>(null);
   const sheetMediaNameInputRef = useRef<HTMLInputElement>(null);
+  const sheetOrdererInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     // 의뢰자 이름은 페이지 로드 시 빈칸으로 시작 (이전 값 자동 입력 방지)
@@ -449,6 +451,7 @@ export function NewOrderClient() {
     | "bookOtherMediaName"
     | "qty"
     | "sheetMediaName"
+    | "sheetOrdererName"
     | "size"
     | "paperName"
     | "paperWeight"
@@ -531,7 +534,9 @@ export function NewOrderClient() {
                     ? qtyInputRef.current
                     : key === "sheetMediaName"
                       ? sheetMediaNameInputRef.current
-                      : key === "size"
+                      : key === "sheetOrdererName"
+                        ? sheetOrdererInputRef.current
+                        : key === "size"
                         ? (sizeWrapperRef.current?.querySelector("input") as HTMLInputElement | null)
                         : key === "paperName"
                           ? (paperNameWrapperRef.current?.querySelector("input") as HTMLInputElement | null)
@@ -542,7 +547,7 @@ export function NewOrderClient() {
                               : null;
     if (el) {
       el.focus();
-      el.scrollIntoView({ behavior: "smooth", block: "center" });
+      el.scrollIntoView({ behavior: "smooth", block: "center", inline: "center" });
     }
   }
 
@@ -864,7 +869,7 @@ export function NewOrderClient() {
       <dl class="grid">
         <div><dt>제작 유형</dt><dd>${esc(orderTypeLabel)}</dd></div>
         <div><dt>의뢰자</dt><dd>${esc(requesterName.trim() || "-")}</dd></div>
-        ${orderType === "book" ? `<div><dt>발주사 (매체ID)</dt><dd>${esc(mediaId === MEDIA_OTHER ? (bookOrdererName.trim() || "-") : (spec?.media_id || "-"))}</dd></div><div><dt>매체명</dt><dd>${esc(mediaDisplay)}</dd></div>` : `<div><dt>매체명</dt><dd>${esc(mediaDisplay)}</dd></div>`}
+        ${orderType === "book" ? `<div><dt>발주사 (매체ID)</dt><dd>${esc(mediaId === MEDIA_OTHER ? (bookOrdererName.trim() || "-") : (spec?.media_id || "-"))}</dd></div><div><dt>매체명</dt><dd>${esc(mediaDisplay)}</dd></div>` : `<div><dt>발주사</dt><dd>${esc(sheetOrdererName.trim() || "-")}</dd></div><div><dt>매체명</dt><dd>${esc(mediaDisplay)}</dd></div>`}
         <div><dt>제작업체</dt><dd>${esc(vendor.trim() || "-")}</dd></div>
         <div><dt>납기일</dt><dd>${esc(dueDate || "-")}</dd></div>
         <div><dt>수량</dt><dd>${esc(qtyDisplay)}</dd></div>
@@ -983,6 +988,7 @@ export function NewOrderClient() {
       } else {
         const kindsCount = Math.max(1, parseInt(kindsCountStr, 10) || 1);
         const sheetsPerKind = Math.max(1, parseInt(sheetsPerKindStr, 10) || 1);
+        payload.media_id = sheetOrdererName.trim() || "sheet";
         payload.media_name = sheetMediaName.trim() || "낱장 인쇄물";
         payload.qty = `${kindsCount}종 ${sheetsPerKind}매`;
         const hasOther = SHEET_FINISHING_OPTIONS.some((k) => finishing[k]) || (finishing["기타"] && finishingEtc.trim());
@@ -1192,17 +1198,30 @@ export function NewOrderClient() {
                 </label>
               </>
             ) : (
-              <label className="block">
-                <span className="block text-sm text-slate-600 mb-1">매체명</span>
-                <input
-                  ref={sheetMediaNameInputRef}
-                  type="text"
-                  value={sheetMediaName}
-                  onChange={(e) => setSheetMediaName(e.target.value)}
-                  placeholder="낱장 인쇄물"
-                  className="input-dark w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
-                />
-              </label>
+              <>
+                <label className="block">
+                  <span className="block text-sm text-slate-600 mb-1">매체명</span>
+                  <input
+                    ref={sheetMediaNameInputRef}
+                    type="text"
+                    value={sheetMediaName}
+                    onChange={(e) => setSheetMediaName(e.target.value)}
+                    placeholder="낱장 인쇄물"
+                    className="input-dark w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+                  />
+                </label>
+                <label className="block">
+                  <span className="block text-sm text-slate-600 mb-1">발주사</span>
+                  <input
+                    ref={sheetOrdererInputRef}
+                    type="text"
+                    value={sheetOrdererName}
+                    onChange={(e) => setSheetOrdererName(e.target.value)}
+                    placeholder="발주사를 입력하세요"
+                    className="input-dark w-full rounded-lg border border-slate-300 px-3 py-2 text-sm placeholder:text-slate-500"
+                  />
+                </label>
+              </>
             )}
             <label className="block">
               <span className="block text-sm text-slate-600 mb-1">제작업체</span>

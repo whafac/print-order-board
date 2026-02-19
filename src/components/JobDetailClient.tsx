@@ -293,7 +293,10 @@ export function JobDetailClient({ job }: { job: Job }) {
               </>
             )}
             {isSheet && (
-              <div><dt className="text-slate-500">매체명</dt><dd className="text-slate-800">{job.media_name || "-"}</dd></div>
+              <>
+                <div><dt className="text-slate-500">발주사</dt><dd className="text-slate-800">{job.media_id && job.media_id !== "sheet" ? job.media_id : "-"}</dd></div>
+                <div><dt className="text-slate-500">매체명</dt><dd className="text-slate-800">{job.media_name || "-"}</dd></div>
+              </>
             )}
             <div><dt className="text-slate-500">출력실</dt><dd className="text-slate-800">{job.vendor || "-"}</dd></div>
             <div><dt className="text-slate-500">납기</dt><dd className="text-slate-800">{job.due_date ? job.due_date.slice(0, 10) : "-"}</dd></div>

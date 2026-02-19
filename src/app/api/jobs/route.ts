@@ -65,7 +65,7 @@ export async function POST(request: NextRequest) {
   let type_spec_snapshot: string;
 
   if (order_type === "sheet") {
-    media_id = "sheet";
+    media_id = body.media_id?.trim() || "sheet";
     media_name = body.media_name?.trim() || "낱장 인쇄물";
     vendor = body.vendor?.trim() || "";
     spec_snapshot = "";
