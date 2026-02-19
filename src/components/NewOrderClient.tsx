@@ -16,6 +16,8 @@ function setStoredRequester(name: string) {
   localStorage.setItem(REQUESTER_KEY, name);
 }
 
+const MEDIA_OTHER = "other";
+
 const SHEET_FINISHING_OPTIONS = [
   "무광코팅",
   "유광코팅",
@@ -69,6 +71,7 @@ export function NewOrderClient() {
   const [fileLink, setFileLink] = useState("");
   const [changesNote, setChangesNote] = useState("");
   const [spec, setSpec] = useState<Spec | null>(null);
+  const [bookOtherMediaName, setBookOtherMediaName] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [toast, setToast] = useState<"ok" | "err" | null>(null);
   const previewWindowRef = useRef<Window | null>(null);
@@ -247,7 +250,7 @@ export function NewOrderClient() {
   }, [activeSuggestions]);
 
   useEffect(() => {
-    if (!mediaId) {
+    if (!mediaId || mediaId === MEDIA_OTHER) {
       setSpec(null);
       setVendor("");
       setTrimSize("");
@@ -413,6 +416,7 @@ export function NewOrderClient() {
     if (!vendor.trim()) missing.push("제작업체");
     if (orderType === "book") {
       if (!mediaId) missing.push("매체");
+      if (mediaId === MEDIA_OTHER && !bookOtherMediaName.trim()) missing.push("매체명 (기타)");
       if (!qty.trim()) missing.push("수량");
     } else {
       if (!sheetMediaName.trim()) missing.push("매체명");
@@ -455,7 +459,7 @@ export function NewOrderClient() {
     }
 
     if (orderType === "book") {
-      if (!spec) return null;
+      if (!spec && mediaId !== MEDIA_OTHER) return null;
 
       // 수량 추출 (기본값 1)
       const qtyNum = parseInt(qty.trim(), 10) || 1;
@@ -610,7 +614,9 @@ export function NewOrderClient() {
       doSubmit();
     };
     const orderTypeLabel = orderType === "book" ? "책자" : "낱장 인쇄물";
-    const mediaDisplay = orderType === "book" ? ((spec?.media_name ?? mediaId) || "-") : (sheetMediaName.trim() || "낱장 인쇄물");
+    const mediaDisplay = orderType === "book"
+      ? (mediaId === MEDIA_OTHER ? (bookOtherMediaName.trim() || "-") : (spec?.media_name ?? mediaId) || "-")
+      : (sheetMediaName.trim() || "낱장 인쇄물");
     const qtyDisplay = orderType === "book" ? (qty.trim() || "-") : `${kindsCountStr}종 ${sheetsPerKindStr}매`;
     const sheetBlock =
       orderType === "sheet"
@@ -656,7 +662,7 @@ export function NewOrderClient() {
         : "";
 
     const bookSpecBlock =
-      orderType === "book" && spec
+      orderType === "book" && (spec || mediaId === MEDIA_OTHER)
         ? `
     <div class="block spec">
       <h3 class="sec">제작 사양 (매체)</h3>
@@ -827,10 +833,11 @@ export function NewOrderClient() {
       };
       if (orderType === "book") {
         payload.media_id = mediaId;
+        payload.media_name = mediaId === MEDIA_OTHER ? bookOtherMediaName.trim() : undefined;
         payload.qty = qty.trim();
         const specSnapshot: Record<string, unknown> = {
           media_id: mediaId,
-          media_name: spec?.media_name || "",
+          media_name: mediaId === MEDIA_OTHER ? bookOtherMediaName.trim() : (spec?.media_name || ""),
           default_vendor: spec?.default_vendor || "",
           trim_size: trimSize.trim(),
           cover_type: coverType.trim(),
@@ -1008,12 +1015,25 @@ export function NewOrderClient() {
                     {specs.map((s) => (
                       <option key={s.media_id} value={s.media_id}>{s.media_name}</option>
                     ))}
+                    <option value={MEDIA_OTHER}>기타</option>
                   </select>
-                  {specs.length === 0 && (
+                  {specs.length === 0 && mediaId !== MEDIA_OTHER && (
                     <p className="mt-1 text-xs text-amber-600">
                       등록된 매체가 없습니다.{" "}
                       <Link href="/specs" className="underline">매체 사양 관리</Link>에서 먼저 매체를 추가해 주세요.
                     </p>
+                  )}
+                  {mediaId === MEDIA_OTHER && (
+                    <label className="mt-3 block">
+                      <span className="block text-sm text-slate-600 mb-1">매체명 (기타 직접 입력)</span>
+                      <input
+                        type="text"
+                        value={bookOtherMediaName}
+                        onChange={(e) => setBookOtherMediaName(e.target.value)}
+                        placeholder="매체명을 입력하세요"
+                        className="input-dark w-full rounded-lg border border-slate-300 px-3 py-2 text-sm placeholder:text-slate-500"
+                      />
+                    </label>
                   )}
                 </label>
                 <label className="block">
@@ -1550,7 +1570,7 @@ export function NewOrderClient() {
             const cost = calculateProductionCost();
             if (!cost) return null;
 
-            if (orderType === "book" && spec && "coverCost" in cost) {
+            if (orderType === "book" && (spec || mediaId === MEDIA_OTHER) && "coverCost" in cost) {
               const bookCost = cost as {
                 coverCost: number;
                 innerCost: number;

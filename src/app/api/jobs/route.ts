@@ -75,13 +75,29 @@ export async function POST(request: NextRequest) {
     if (!media_id_req) {
       return NextResponse.json({ error: "media_id required for book order" }, { status: 400 });
     }
-    const spec = await getSpecByMediaId(media_id_req);
-    if (!spec) return NextResponse.json({ error: "Unknown media_id" }, { status: 400 });
-    media_id = media_id_req;
-    media_name = spec.media_name;
-    vendor = body.vendor?.trim() || spec.default_vendor;
-    spec_snapshot = body.spec_snapshot?.trim() || JSON.stringify(spec);
-    type_spec_snapshot = "";
+    if (media_id_req === "other") {
+      const custom_media_name = body.media_name?.trim();
+      if (!custom_media_name) {
+        return NextResponse.json({ error: "media_name required for 기타(other) book order" }, { status: 400 });
+      }
+      const custom_spec = body.spec_snapshot?.trim();
+      if (!custom_spec) {
+        return NextResponse.json({ error: "spec_snapshot required for 기타(other) book order" }, { status: 400 });
+      }
+      media_id = "other";
+      media_name = custom_media_name;
+      vendor = body.vendor?.trim() || "";
+      spec_snapshot = custom_spec;
+      type_spec_snapshot = "";
+    } else {
+      const spec = await getSpecByMediaId(media_id_req);
+      if (!spec) return NextResponse.json({ error: "Unknown media_id" }, { status: 400 });
+      media_id = media_id_req;
+      media_name = spec.media_name;
+      vendor = body.vendor?.trim() || spec.default_vendor;
+      spec_snapshot = body.spec_snapshot?.trim() || JSON.stringify(spec);
+      type_spec_snapshot = "";
+    }
   }
 
   // vendor 이름으로 vendor_id 찾기
