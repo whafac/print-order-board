@@ -8,6 +8,7 @@ interface Job {
   job_id: string;
   created_at: string;
   requester_name: string;
+  media_id?: string;
   media_name: string;
   vendor: string;
   due_date: string;
@@ -285,7 +286,15 @@ export function JobDetailClient({ job }: { job: Job }) {
           <dl className="grid grid-cols-1 gap-2 text-sm sm:grid-cols-2">
             <div><dt className="text-slate-500">의뢰자</dt><dd className="text-slate-800">{job.requester_name || "-"}</dd></div>
             <div><dt className="text-slate-500">생성일</dt><dd className="text-slate-800">{formatCreatedAt(job.created_at)}</dd></div>
-            <div><dt className="text-slate-500">매체</dt><dd className="text-slate-800">{job.media_name || "-"}</dd></div>
+            {!isSheet && (
+              <>
+                <div><dt className="text-slate-500">발주사 (매체ID)</dt><dd className="text-slate-800">{job.media_id === "other" ? String(spec.media_id ?? "-") : (job.media_id || "-")}</dd></div>
+                <div><dt className="text-slate-500">매체명</dt><dd className="text-slate-800">{job.media_name || "-"}</dd></div>
+              </>
+            )}
+            {isSheet && (
+              <div><dt className="text-slate-500">매체명</dt><dd className="text-slate-800">{job.media_name || "-"}</dd></div>
+            )}
             <div><dt className="text-slate-500">출력실</dt><dd className="text-slate-800">{job.vendor || "-"}</dd></div>
             <div><dt className="text-slate-500">납기</dt><dd className="text-slate-800">{job.due_date ? job.due_date.slice(0, 10) : "-"}</dd></div>
             <div><dt className="text-slate-500">수량</dt><dd className="text-slate-800">{job.qty || "-"}</dd></div>
