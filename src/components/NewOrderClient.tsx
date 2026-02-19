@@ -439,7 +439,7 @@ export function NewOrderClient() {
     if (!dueDate) missing.push("납기일");
     if (!vendor.trim()) missing.push("제작업체");
     if (orderType === "book") {
-      if (!mediaId) missing.push("매체");
+      if (!mediaId) missing.push("매체명");
       if (mediaId === MEDIA_OTHER) {
         if (!bookOrdererName.trim()) missing.push("발주사 (매체ID)");
         if (!bookOtherMediaName.trim()) missing.push("매체명");
@@ -772,7 +772,7 @@ export function NewOrderClient() {
       <dl class="grid">
         <div><dt>제작 유형</dt><dd>${esc(orderTypeLabel)}</dd></div>
         <div><dt>의뢰자</dt><dd>${esc(requesterName.trim() || "-")}</dd></div>
-        ${orderType === "book" ? `<div><dt>발주사 (매체ID)</dt><dd>${esc(mediaId === MEDIA_OTHER ? (bookOrdererName.trim() || "-") : (spec?.media_id || "-"))}</dd></div><div><dt>매체</dt><dd>${esc(mediaDisplay)}</dd></div>` : `<div><dt>매체명</dt><dd>${esc(mediaDisplay)}</dd></div>`}
+        ${orderType === "book" ? `<div><dt>발주사 (매체ID)</dt><dd>${esc(mediaId === MEDIA_OTHER ? (bookOrdererName.trim() || "-") : (spec?.media_id || "-"))}</dd></div><div><dt>매체명</dt><dd>${esc(mediaDisplay)}</dd></div>` : `<div><dt>매체명</dt><dd>${esc(mediaDisplay)}</dd></div>`}
         <div><dt>제작업체</dt><dd>${esc(vendor.trim() || "-")}</dd></div>
         <div><dt>납기일</dt><dd>${esc(dueDate || "-")}</dd></div>
         <div><dt>수량</dt><dd>${esc(qtyDisplay)}</dd></div>
@@ -1031,7 +1031,7 @@ export function NewOrderClient() {
             {orderType === "book" ? (
               <>
                 <label className="block">
-                  <span className="block text-sm text-slate-600 mb-1">매체</span>
+                  <span className="block text-sm text-slate-600 mb-1">매체명</span>
                   <select
                     value={mediaId}
                     onChange={(e) => setMediaId(e.target.value)}
