@@ -27,6 +27,7 @@ const STATUS_LABELS: Record<string, string> = {
   납품: "납품",
   검수완료: "검수완료",
   완료: "완료",
+  취소: "취소",
 };
 
 const STATUS_STYLES: Record<string, string> = {
@@ -35,6 +36,7 @@ const STATUS_STYLES: Record<string, string> = {
   납품: "bg-violet-100 text-violet-800",
   검수완료: "bg-blue-100 text-blue-800",
   완료: "bg-emerald-100 text-emerald-800",
+  취소: "bg-slate-200 text-slate-600",
 };
 
 function getStatusStyle(status: string): string {

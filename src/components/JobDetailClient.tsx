@@ -24,7 +24,7 @@ interface Job {
   production_cost?: string;
 }
 
-const STATUS_OPTIONS = ["접수", "진행", "납품", "검수완료", "완료"];
+const STATUS_OPTIONS = ["접수", "진행", "납품", "검수완료", "완료", "취소"];
 
 const EDITOR_KEY = "print_order_editor_name";
 
@@ -66,7 +66,11 @@ export function JobDetailClient({ job }: { job: Job }) {
   const [status, setStatus] = useState(job.status);
   const [editorName, setEditorName] = useState(job.last_updated_by || getStoredEditor());
   const [saving, setSaving] = useState(false);
+  const [cancelling, setCancelling] = useState(false);
   const [toast, setToast] = useState<"ok" | "err" | null>(null);
+
+  const canCancel = status === "접수";
+  const isCancelled = status === "취소";
 
   let spec: Record<string, unknown> = {};
   try {
@@ -248,6 +252,31 @@ export function JobDetailClient({ job }: { job: Job }) {
     }
   }
 
+  async function handleCancel() {
+    if (!confirm("현재 의뢰서를 취소하시겠습니까?")) return;
+    setCancelling(true);
+    setToast(null);
+    if (editorName) setStoredEditor(editorName);
+    try {
+      const res = await fetch(`/api/jobs/${job.job_id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: "취소", last_updated_by: editorName }),
+      });
+      if (!res.ok) {
+        setToast("err");
+        return;
+      }
+      setStatus("취소");
+      setToast("ok");
+      router.refresh();
+    } catch {
+      setToast("err");
+    } finally {
+      setCancelling(false);
+    }
+  }
+
   return (
     <>
       <header className="sticky top-0 z-10 border-b border-slate-200 bg-white/95 backdrop-blur">
@@ -269,6 +298,11 @@ export function JobDetailClient({ job }: { job: Job }) {
       </header>
 
       <div className="mx-auto max-w-4xl px-4 py-6">
+        {isCancelled && (
+          <div className="mb-4 rounded-lg border border-slate-200 bg-slate-100 px-4 py-3 text-sm text-slate-700">
+            이 의뢰서는 취소되었습니다. 내용 확인만 가능합니다.
+          </div>
+        )}
         <div className="mb-6 flex items-center justify-between gap-2">
           <div className="flex items-center gap-2">
             <h1 className="text-lg font-semibold text-slate-800">의뢰 상세</h1>
@@ -281,20 +315,23 @@ export function JobDetailClient({ job }: { job: Job }) {
               {job.job_id} 📋
             </button>
           </div>
-          {status === "접수" ? (
-            <Link
-              href={`/jobs/${job.job_id}/edit`}
-              className="rounded-lg bg-slate-800 px-4 py-2 text-sm font-medium text-white hover:bg-slate-700 transition-colors"
+          {canCancel ? (
+            <button
+              type="button"
+              onClick={handleCancel}
+              disabled={cancelling}
+              className="rounded-lg bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700 disabled:opacity-50 transition-colors"
             >
-              수정
-            </Link>
-          ) : (
+              {cancelling ? "취소 처리 중…" : "취소"}
+            </button>
+          ) : isCancelled ? null : (
             <button
               type="button"
               disabled
               className="cursor-not-allowed rounded-lg bg-slate-200 px-4 py-2 text-sm font-medium text-slate-500"
+              title="진행 단계 이상의 의뢰는 취소할 수 없습니다"
             >
-              수정
+              취소
             </button>
           )}
         </div>
@@ -430,7 +467,7 @@ export function JobDetailClient({ job }: { job: Job }) {
           );
         })()}
 
-        <section className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+        <section className={`rounded-xl border border-slate-200 bg-white p-5 shadow-sm ${isCancelled ? "opacity-70 pointer-events-none" : ""}`}>
           <h2 className="mb-3 text-sm font-medium text-slate-500">상태 변경</h2>
           <div className="mb-3 space-y-1 text-xs text-slate-500">
             <div>
@@ -441,39 +478,46 @@ export function JobDetailClient({ job }: { job: Job }) {
                 마지막 수정자: <span className="font-medium text-slate-700">{job.last_updated_by}</span>
               </div>
             )}
+            {isCancelled && (
+              <div className="mt-2 rounded bg-slate-100 px-3 py-2 text-slate-600">
+                취소된 의뢰서로, 수정이 불가합니다.
+              </div>
+            )}
           </div>
-          <div className="flex flex-wrap items-end gap-4">
-            <label className="flex flex-col gap-1">
-              <span className="text-xs text-slate-500">상태</span>
-              <select
-                value={status}
-                onChange={(e) => setStatus(e.target.value)}
-                className="input-dark rounded border border-slate-300 px-3 py-2 text-sm"
+          {!isCancelled && (
+            <div className="flex flex-wrap items-end gap-4">
+              <label className="flex flex-col gap-1">
+                <span className="text-xs text-slate-500">상태</span>
+                <select
+                  value={status}
+                  onChange={(e) => setStatus(e.target.value)}
+                  className="input-dark rounded border border-slate-300 px-3 py-2 text-sm"
+                >
+                  {STATUS_OPTIONS.map((s) => (
+                    <option key={s} value={s}>{s}</option>
+                  ))}
+                </select>
+              </label>
+              <label className="flex flex-col gap-1">
+                <span className="text-xs text-slate-500">수정자 이름</span>
+                <input
+                  type="text"
+                  value={editorName}
+                  onChange={(e) => setEditorName(e.target.value)}
+                  placeholder="이름 입력"
+                  className="input-dark rounded border border-slate-300 px-3 py-2 text-sm w-40 placeholder:text-slate-500"
+                />
+              </label>
+              <button
+                type="button"
+                onClick={saveStatus}
+                disabled={saving}
+                className="rounded-lg bg-slate-800 px-4 py-2 text-sm text-white hover:bg-slate-700 disabled:opacity-50"
               >
-                {STATUS_OPTIONS.map((s) => (
-                  <option key={s} value={s}>{s}</option>
-                ))}
-              </select>
-            </label>
-            <label className="flex flex-col gap-1">
-              <span className="text-xs text-slate-500">수정자 이름</span>
-              <input
-                type="text"
-                value={editorName}
-                onChange={(e) => setEditorName(e.target.value)}
-                placeholder="이름 입력"
-                className="input-dark rounded border border-slate-300 px-3 py-2 text-sm w-40 placeholder:text-slate-500"
-              />
-            </label>
-            <button
-              type="button"
-              onClick={saveStatus}
-              disabled={saving}
-              className="rounded-lg bg-slate-800 px-4 py-2 text-sm text-white hover:bg-slate-700 disabled:opacity-50"
-            >
-              {saving ? "저장 중…" : "저장"}
-            </button>
-          </div>
+                {saving ? "저장 중…" : "저장"}
+              </button>
+            </div>
+          )}
         </section>
 
         {toast === "ok" && (
