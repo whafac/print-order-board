@@ -187,6 +187,38 @@ function rowToVendorPricingByHeader(row: string[], header: string[]): VendorPric
   return o as unknown as VendorPricingRow;
 }
 
+// 낱장 제작금액 계산 (동기) - appendJob, API PATCH에서 사용
+export function calculateSheetProductionCost(typeSpecJson: string): number | null {
+  try {
+    const typeSpec = JSON.parse(typeSpecJson) as Record<string, unknown>;
+    const kindsCount = Math.max(1, parseInt(String(typeSpec.kinds_count || "1"), 10) || 1);
+    const sheetsPerKind = Math.max(1, parseInt(String(typeSpec.sheets_per_kind || "1"), 10) || 1);
+    const totalSheets = kindsCount * sheetsPerKind;
+    const printCost = totalSheets * 300;
+    let finishingCost = 0;
+    const finishing = String(typeSpec.finishing || "").toLowerCase().trim();
+    const printSide = String(typeSpec.print_side || "양면");
+    if (!finishing.startsWith("없음") && finishing !== "") {
+      if (finishing.includes("에폭시")) {
+        finishingCost = 120000 * kindsCount;
+      } else if (
+        finishing.includes("코팅") ||
+        finishing.includes("라미네이팅") ||
+        finishing.includes("라미테이팅")
+      ) {
+        let coatingSheets = totalSheets;
+        if (printSide === "양면") coatingSheets = totalSheets * 2;
+        finishingCost = coatingSheets * 500;
+      }
+    }
+    const subtotal = printCost + finishingCost;
+    const vat = Math.floor(subtotal * 0.1);
+    return subtotal + vat;
+  } catch {
+    return null;
+  }
+}
+
 // 제작금액 계산 함수 (책자만)
 export async function calculateProductionCostFromSpec(
   spec: Record<string, unknown>,
@@ -411,16 +443,17 @@ export async function appendJob(row: Omit<JobRow, "job_id" | "created_at" | "las
   const created = toKoreaTimeString(now);
   const lastUpdated = created;
   
-  // 제작금액 계산 (책자인 경우)
+  // 제작금액 계산 (책자 및 낱장)
   let productionCost: string = "";
-  if (row.order_type === "book" && row.spec_snapshot) {
+  if (row.order_type === "sheet" && row.type_spec_snapshot) {
+    const cost = calculateSheetProductionCost(row.type_spec_snapshot);
+    if (cost !== null) productionCost = String(cost);
+  } else if (row.order_type === "book" && row.spec_snapshot) {
     try {
       const spec = JSON.parse(row.spec_snapshot);
-      spec.order_type = row.order_type; // order_type 추가
+      spec.order_type = row.order_type;
       const cost = await calculateProductionCostFromSpec(spec, row.qty, row.vendor_id);
-      if (cost !== null) {
-        productionCost = String(cost);
-      }
+      if (cost !== null) productionCost = String(cost);
     } catch {
       // JSON 파싱 실패 시 무시
     }
@@ -598,7 +631,8 @@ export async function updateJobContent(jobId: string, updates: Partial<JobRow>):
     const row = rows[i] ?? [];
     if ((row[jobIdCol] ?? "").toString().trim() !== jobId.trim()) continue;
     const newRow: string[] = [...row];
-    while (newRow.length < header.length) newRow.push("");
+    const minLen = Math.max(header.length, 18);
+    while (newRow.length < minLen) newRow.push("");
 
     const lastUpdatedAtCol = headerCol(header, "last_updated_at");
     if (lastUpdatedAtCol >= 0) newRow[lastUpdatedAtCol] = new Date().toISOString();

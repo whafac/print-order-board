@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getJobById, updateJob, updateJobContent } from "@/lib/sheets";
+import { getJobById, updateJob, updateJobContent, calculateProductionCostFromSpec, calculateSheetProductionCost } from "@/lib/sheets";
 
 export async function GET(
   _request: NextRequest,
@@ -36,6 +36,23 @@ export async function PATCH(
       const keys = ["requester_name", "media_id", "media_name", "vendor", "due_date", "qty", "file_link", "changes_note", "spec_snapshot", "type_spec_snapshot", "last_updated_by"];
       for (const k of keys) {
         if (body[k] !== undefined) updates[k] = String(body[k] ?? "");
+      }
+      // 제작금액 재계산 및 포함
+      const orderType = body.order_type as string;
+      const qty = String(body.qty ?? "");
+      const vendorId = body.vendor_id as string | undefined;
+      if (orderType === "sheet" && updates.type_spec_snapshot) {
+        const cost = calculateSheetProductionCost(updates.type_spec_snapshot);
+        if (cost !== null) updates.production_cost = String(cost);
+      } else if (orderType === "book" && updates.spec_snapshot) {
+        try {
+          const spec = JSON.parse(updates.spec_snapshot) as Record<string, unknown>;
+          spec.order_type = "book";
+          const cost = await calculateProductionCostFromSpec(spec, qty, vendorId);
+          if (cost !== null) updates.production_cost = String(cost);
+        } catch {
+          // 무시
+        }
       }
       const ok = await updateJobContent(job_id, updates);
       if (!ok) return NextResponse.json({ error: "Not found" }, { status: 404 });

@@ -241,19 +241,44 @@ export function NewOrderClient({
       try {
         const sp = initialJob.spec_snapshot ? JSON.parse(initialJob.spec_snapshot) : {};
         setBookOrdererName(sp.media_id || initialJob.media_id || "");
-        setTrimSize(String(sp.trim_size ?? ""));
-        setCoverType(String(sp.cover_type ?? ""));
-        setCoverPaper(String(sp.cover_paper ?? ""));
-        setCoverPrint(String(sp.cover_print ?? sp.print_color ?? ""));
-        setInnerPages(String(sp.inner_pages ?? sp.pages ?? ""));
-        setInnerPaper(String(sp.inner_paper ?? ""));
-        setInnerPrint(String(sp.inner_print ?? sp.print_color ?? ""));
-        setBinding(String(sp.binding ?? ""));
-        setFinishingSpec(String(sp.finishing ?? ""));
-        setPackagingDelivery(String(sp.packaging_delivery ?? ""));
-        setFileRule(String(sp.file_rule ?? ""));
-        const addl = sp.additional_inner_pages;
-        if (Array.isArray(addl)) setAdditionalInnerPages(addl);
+        const trimSizeVal = String(sp.trim_size ?? "");
+        const coverTypeVal = String(sp.cover_type ?? "");
+        const coverPaperVal = String(sp.cover_paper ?? "");
+        const coverPrintVal = String(sp.cover_print ?? sp.print_color ?? "");
+        const innerPagesVal = String(sp.inner_pages ?? sp.pages ?? "");
+        const innerPaperVal = String(sp.inner_paper ?? "");
+        const innerPrintVal = String(sp.inner_print ?? sp.print_color ?? "");
+        const bindingVal = String(sp.binding ?? "");
+        const finishingVal = String(sp.finishing ?? "");
+        const packagingVal = String(sp.packaging_delivery ?? "");
+        const fileRuleVal = String(sp.file_rule ?? "");
+        const addl = Array.isArray(sp.additional_inner_pages) ? sp.additional_inner_pages : [];
+        setTrimSize(trimSizeVal);
+        setCoverType(coverTypeVal);
+        setCoverPaper(coverPaperVal);
+        setCoverPrint(coverPrintVal);
+        setInnerPages(innerPagesVal);
+        setInnerPaper(innerPaperVal);
+        setInnerPrint(innerPrintVal);
+        setBinding(bindingVal);
+        setFinishingSpec(finishingVal);
+        setPackagingDelivery(packagingVal);
+        setFileRule(fileRuleVal);
+        setAdditionalInnerPages(addl);
+        setDefaultValues({
+          trimSize: trimSizeVal,
+          coverType: coverTypeVal,
+          coverPaper: coverPaperVal,
+          coverPrint: coverPrintVal,
+          innerPages: innerPagesVal,
+          innerPaper: innerPaperVal,
+          innerPrint: innerPrintVal,
+          binding: bindingVal,
+          finishingSpec: finishingVal,
+          packagingDelivery: packagingVal,
+          fileRule: fileRuleVal,
+          additionalInnerPages: addl,
+        });
       } catch {}
     }
   }, [initialJob]);
@@ -336,7 +361,7 @@ export function NewOrderClient({
   }, [activeSuggestions]);
 
   useEffect(() => {
-    if (!mediaId || mediaId === MEDIA_OTHER) {
+    if ((!mediaId || mediaId === MEDIA_OTHER) && !editJobId) {
       setSpec(null);
       setVendor("");
       setTrimSize("");
@@ -1101,6 +1126,7 @@ export function NewOrderClient({
       }
       if (editJobId) {
         const patchBody: Record<string, string> = {
+          order_type: orderType,
           requester_name: requesterName.trim(),
           media_id: String(payload.media_id || ""),
           media_name: String(payload.media_name || ""),
