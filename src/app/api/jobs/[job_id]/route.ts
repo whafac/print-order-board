@@ -37,8 +37,14 @@ export async function PATCH(
       for (const k of keys) {
         if (body[k] !== undefined) updates[k] = String(body[k] ?? "");
       }
-      // 제작금액 재계산 및 포함
+      // order_type별 미사용 snapshot 초기화 (기존값 유지로 인한 되돌림 방지)
       const orderType = body.order_type as string;
+      if (orderType === "sheet") {
+        updates.spec_snapshot = "";
+      } else if (orderType === "book") {
+        updates.type_spec_snapshot = "";
+      }
+      // 제작금액 재계산 및 포함
       const qty = String(body.qty ?? "");
       const vendorId = body.vendor_id as string | undefined;
       if (orderType === "sheet" && updates.type_spec_snapshot) {

@@ -626,13 +626,16 @@ export async function updateJobContent(jobId: string, updates: Partial<JobRow>):
   const hasHeader = headerCol(header, "job_id") !== -1;
   const jobIdCol = hasHeader ? headerCol(header, "job_id") : 0;
   const dataStart = hasHeader ? 1 : 0;
+  const needle = normalizeCell(jobId);
 
   for (let i = dataStart; i < rows.length; i++) {
     const row = rows[i] ?? [];
-    if ((row[jobIdCol] ?? "").toString().trim() !== jobId.trim()) continue;
-    const newRow: string[] = [...row];
-    const minLen = Math.max(header.length, 18);
-    while (newRow.length < minLen) newRow.push("");
+    if (normalizeCell(row[jobIdCol]) !== needle) continue;
+
+    const numCols = Math.max(header.length, 18);
+    const newRow: string[] = Array.from({ length: numCols }, (_, c) =>
+      c < row.length ? String(row[c] ?? "") : ""
+    );
 
     const lastUpdatedAtCol = headerCol(header, "last_updated_at");
     if (lastUpdatedAtCol >= 0) newRow[lastUpdatedAtCol] = new Date().toISOString();
