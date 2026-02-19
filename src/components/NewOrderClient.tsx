@@ -72,6 +72,7 @@ export function NewOrderClient() {
   const [changesNote, setChangesNote] = useState("");
   const [spec, setSpec] = useState<Spec | null>(null);
   const [bookOrdererName, setBookOrdererName] = useState("");
+  const [bookOtherMediaName, setBookOtherMediaName] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [toast, setToast] = useState<"ok" | "err" | null>(null);
   const previewWindowRef = useRef<Window | null>(null);
@@ -439,7 +440,10 @@ export function NewOrderClient() {
     if (!vendor.trim()) missing.push("제작업체");
     if (orderType === "book") {
       if (!mediaId) missing.push("매체");
-      if (mediaId === MEDIA_OTHER && !bookOrdererName.trim()) missing.push("발주사명");
+      if (mediaId === MEDIA_OTHER) {
+        if (!bookOrdererName.trim()) missing.push("발주사 (매체ID)");
+        if (!bookOtherMediaName.trim()) missing.push("매체명");
+      }
       if (!qty.trim()) missing.push("수량");
     } else {
       if (!sheetMediaName.trim()) missing.push("매체명");
@@ -638,7 +642,7 @@ export function NewOrderClient() {
     };
     const orderTypeLabel = orderType === "book" ? "책자" : "낱장 인쇄물";
     const mediaDisplay = orderType === "book"
-      ? (mediaId === MEDIA_OTHER ? (bookOrdererName.trim() || "-") : (spec?.media_name ?? mediaId) || "-")
+      ? (mediaId === MEDIA_OTHER ? (bookOtherMediaName.trim() || "-") : (spec?.media_name ?? mediaId) || "-")
       : (sheetMediaName.trim() || "낱장 인쇄물");
     const qtyDisplay = orderType === "book" ? (qty.trim() || "-") : `${kindsCountStr}종 ${sheetsPerKindStr}매`;
     const sheetBlock =
@@ -856,11 +860,11 @@ export function NewOrderClient() {
       };
       if (orderType === "book") {
         payload.media_id = mediaId;
-        payload.media_name = mediaId === MEDIA_OTHER ? bookOrdererName.trim() : undefined;
+        payload.media_name = mediaId === MEDIA_OTHER ? bookOtherMediaName.trim() : undefined;
         payload.qty = qty.trim();
         const specSnapshot: Record<string, unknown> = {
-          media_id: mediaId,
-          media_name: mediaId === MEDIA_OTHER ? bookOrdererName.trim() : (spec?.media_name || ""),
+          media_id: mediaId === MEDIA_OTHER ? bookOrdererName.trim() : mediaId,
+          media_name: mediaId === MEDIA_OTHER ? bookOtherMediaName.trim() : (spec?.media_name || ""),
           default_vendor: spec?.default_vendor || "",
           trim_size: trimSize.trim(),
           cover_type: coverType.trim(),
@@ -1047,12 +1051,24 @@ export function NewOrderClient() {
                     </p>
                   )}
                 </label>
+                {mediaId === MEDIA_OTHER && (
+                  <label className="block">
+                    <span className="block text-sm text-slate-600 mb-1">매체명</span>
+                    <input
+                      ref={bookOrdererNameInputRef}
+                      type="text"
+                      value={bookOtherMediaName}
+                      onChange={(e) => setBookOtherMediaName(e.target.value)}
+                      placeholder="매체명을 입력하세요"
+                      className="input-dark w-full rounded-lg border border-slate-300 px-3 py-2 text-sm placeholder:text-slate-500"
+                    />
+                  </label>
+                )}
                 {mediaId && (
                   <label className="block">
                     <span className="block text-sm text-slate-600 mb-1">발주사 (매체ID)</span>
                     {mediaId === MEDIA_OTHER ? (
                       <input
-                        ref={bookOrdererNameInputRef}
                         type="text"
                         value={bookOrdererName}
                         onChange={(e) => setBookOrdererName(e.target.value)}
