@@ -173,6 +173,13 @@ export function NewOrderClient() {
   const paperWeightWrapperRef = useRef<HTMLDivElement>(null);
   const paperColorWrapperRef = useRef<HTMLDivElement>(null);
   const bookOrdererNameInputRef = useRef<HTMLInputElement>(null);
+  const requesterNameInputRef = useRef<HTMLInputElement>(null);
+  const dueDateInputRef = useRef<HTMLInputElement>(null);
+  const vendorSelectRef = useRef<HTMLSelectElement>(null);
+  const mediaIdSelectRef = useRef<HTMLSelectElement>(null);
+  const bookOrdererInputRef = useRef<HTMLInputElement>(null);
+  const qtyInputRef = useRef<HTMLInputElement>(null);
+  const sheetMediaNameInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     // 의뢰자 이름은 페이지 로드 시 빈칸으로 시작 (이전 값 자동 입력 방지)
@@ -433,36 +440,121 @@ export function NewOrderClient() {
     );
   }
 
-  function getMissingRequiredFields(): string[] {
-    const missing: string[] = [];
-    if (!requesterName.trim()) missing.push("의뢰자 이름");
-    if (!dueDate) missing.push("납기일");
-    if (!vendor.trim()) missing.push("제작업체");
-    if (orderType === "book") {
-      if (!mediaId) missing.push("매체명");
-      if (mediaId === MEDIA_OTHER) {
-        if (!bookOrdererName.trim()) missing.push("발주사 (매체ID)");
-        if (!bookOtherMediaName.trim()) missing.push("매체명");
-      }
-      if (!qty.trim()) missing.push("수량");
-    } else {
-      if (!sheetMediaName.trim()) missing.push("매체명");
-      if (!size.trim()) missing.push("낱장 사양 1. 사이즈");
-      if (!paperName.trim()) missing.push("낱장 사양 2. 용지명");
-      if (!paperWeight.trim()) missing.push("낱장 사양 2. 평량");
-      if (!paperColor.trim()) missing.push("낱장 사양 2. 용지색상");
+  type FocusableFieldKey =
+    | "requesterName"
+    | "dueDate"
+    | "vendor"
+    | "mediaId"
+    | "bookOrdererName"
+    | "bookOtherMediaName"
+    | "qty"
+    | "sheetMediaName"
+    | "size"
+    | "paperName"
+    | "paperWeight"
+    | "paperColor";
+
+  function getMissingRequiredFields(): { keys: FocusableFieldKey[]; labels: string[] } {
+    const keys: FocusableFieldKey[] = [];
+    const labels: string[] = [];
+    if (!requesterName.trim()) {
+      keys.push("requesterName");
+      labels.push("의뢰자 이름");
     }
-    return missing;
+    if (!dueDate) {
+      keys.push("dueDate");
+      labels.push("납기일");
+    }
+    if (!vendor.trim()) {
+      keys.push("vendor");
+      labels.push("제작업체");
+    }
+    if (orderType === "book") {
+      if (!mediaId) {
+        keys.push("mediaId");
+        labels.push("매체명");
+      }
+      if (mediaId === MEDIA_OTHER) {
+        if (!bookOrdererName.trim()) {
+          keys.push("bookOrdererName");
+          labels.push("발주사 (매체ID)");
+        }
+        if (!bookOtherMediaName.trim()) {
+          keys.push("bookOtherMediaName");
+          labels.push("매체명");
+        }
+      }
+      if (!qty.trim()) {
+        keys.push("qty");
+        labels.push("수량");
+      }
+    } else {
+      if (!sheetMediaName.trim()) {
+        keys.push("sheetMediaName");
+        labels.push("매체명");
+      }
+      if (!size.trim()) {
+        keys.push("size");
+        labels.push("낱장 사양 1. 사이즈");
+      }
+      if (!paperName.trim()) {
+        keys.push("paperName");
+        labels.push("낱장 사양 2. 용지명");
+      }
+      if (!paperWeight.trim()) {
+        keys.push("paperWeight");
+        labels.push("낱장 사양 2. 평량");
+      }
+      if (!paperColor.trim()) {
+        keys.push("paperColor");
+        labels.push("낱장 사양 2. 용지색상");
+      }
+    }
+    return { keys, labels };
+  }
+
+  function focusField(key: FocusableFieldKey) {
+    const el =
+      key === "requesterName"
+        ? requesterNameInputRef.current
+        : key === "dueDate"
+          ? dueDateInputRef.current
+          : key === "vendor"
+            ? vendorSelectRef.current
+            : key === "mediaId"
+              ? mediaIdSelectRef.current
+              : key === "bookOrdererName"
+                ? bookOrdererInputRef.current
+                : key === "bookOtherMediaName"
+                  ? bookOrdererNameInputRef.current
+                  : key === "qty"
+                    ? qtyInputRef.current
+                    : key === "sheetMediaName"
+                      ? sheetMediaNameInputRef.current
+                      : key === "size"
+                        ? (sizeWrapperRef.current?.querySelector("input") as HTMLInputElement | null)
+                        : key === "paperName"
+                          ? (paperNameWrapperRef.current?.querySelector("input") as HTMLInputElement | null)
+                          : key === "paperWeight"
+                            ? (paperWeightWrapperRef.current?.querySelector("input") as HTMLInputElement | null)
+                            : key === "paperColor"
+                              ? (paperColorWrapperRef.current?.querySelector("input") as HTMLInputElement | null)
+                              : null;
+    if (el) {
+      el.focus();
+      el.scrollIntoView({ behavior: "smooth", block: "center" });
+    }
   }
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    const missing = getMissingRequiredFields();
-    if (missing.length > 0) {
-      const message = "입력 내용을 확인해 주세요.\n\n필수 항목: " + missing.join(", ");
+    const { keys, labels } = getMissingRequiredFields();
+    if (keys.length > 0) {
+      const message = "입력 내용을 확인해 주세요.\n\n필수 항목: " + labels.join(", ");
       window.alert(message);
       setToast("err");
       setTimeout(() => setToast(null), 2000);
+      setTimeout(() => focusField(keys[0]), 0);
       return;
     }
     openPreviewWindow();
@@ -1021,6 +1113,7 @@ export function NewOrderClient() {
             <label className="block">
               <span className="block text-sm text-slate-600 mb-1">의뢰자 이름</span>
               <input
+                ref={requesterNameInputRef}
                 type="text"
                 value={requesterName}
                 onChange={(e) => setRequesterName(e.target.value)}
@@ -1033,6 +1126,7 @@ export function NewOrderClient() {
                 <label className="block">
                   <span className="block text-sm text-slate-600 mb-1">매체명</span>
                   <select
+                    ref={mediaIdSelectRef}
                     value={mediaId}
                     onChange={(e) => setMediaId(e.target.value)}
                     className="input-dark w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
@@ -1071,6 +1165,7 @@ export function NewOrderClient() {
                     <span className="block text-sm text-slate-600 mb-1">발주사 (매체ID)</span>
                     {mediaId === MEDIA_OTHER ? (
                       <input
+                        ref={bookOrdererInputRef}
                         type="text"
                         value={bookOrdererName}
                         onChange={(e) => setBookOrdererName(e.target.value)}
@@ -1087,6 +1182,7 @@ export function NewOrderClient() {
                 <label className="block">
                   <span className="block text-sm text-slate-600 mb-1">수량</span>
                   <input
+                    ref={qtyInputRef}
                     type="text"
                     value={qty}
                     onChange={(e) => setQty(e.target.value)}
@@ -1099,6 +1195,7 @@ export function NewOrderClient() {
               <label className="block">
                 <span className="block text-sm text-slate-600 mb-1">매체명</span>
                 <input
+                  ref={sheetMediaNameInputRef}
                   type="text"
                   value={sheetMediaName}
                   onChange={(e) => setSheetMediaName(e.target.value)}
@@ -1110,6 +1207,7 @@ export function NewOrderClient() {
             <label className="block">
               <span className="block text-sm text-slate-600 mb-1">제작업체</span>
               <select
+                ref={vendorSelectRef}
                 value={vendor}
                 onChange={(e) => setVendor(e.target.value)}
                 className="input-dark w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
@@ -1125,6 +1223,7 @@ export function NewOrderClient() {
             <label className="block">
               <span className="block text-sm text-slate-600 mb-1">납기일</span>
               <input
+                ref={dueDateInputRef}
                 type="date"
                 value={dueDate}
                 onChange={(e) => setDueDate(e.target.value)}
