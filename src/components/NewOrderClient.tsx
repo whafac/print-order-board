@@ -1943,6 +1943,7 @@ export function NewOrderClient({
                 coverPageCount: number;
                 innerPageCount: number;
                 additionalInnerPagesTotal: number;
+                pageUnitPrice?: number;
               };
               return (
               <section className="mb-6 rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
@@ -2022,6 +2023,7 @@ export function NewOrderClient({
                 qtyNum: number;
                 kindsCount: number;
                 sheetsPerKind: number;
+                sheetUnitPrice?: number;
               };
               return (
                 <section className="mb-6 rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
