@@ -46,7 +46,7 @@ const SPEC_FIELDS: { key: keyof Spec; label: string }[] = [
   { key: "binding", label: "제본" },
   { key: "finishing", label: "후가공" },
   { key: "packaging_delivery", label: "포장·납품" },
-  { key: "file_rule", label: "파일규격" },
+  { key: "file_rule", label: "특이사항" },
 ];
 
 const emptySpec = (): Spec => ({
