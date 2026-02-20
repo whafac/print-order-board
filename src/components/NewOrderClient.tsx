@@ -31,14 +31,18 @@ const SHEET_FINISHING_OPTIONS = [
   "넘버링",
 ] as const;
 
-const INNER_PRINT_PRESETS = [
-  "단면 먹1도",
+const PRINT_PRESETS = [
+  "양면 8도컬러",
   "단면 4도컬러",
   "양면 먹2도",
-  "양면 8도컬러",
+  "단면 먹1도",
   "무지(인쇄없음)",
 ] as const;
-const INNER_PRINT_CUSTOM = "직접입력";
+const PRINT_CUSTOM = "직접입력";
+
+function isPrintPreset(value: string): value is (typeof PRINT_PRESETS)[number] {
+  return (PRINT_PRESETS as readonly string[]).includes(value);
+}
 
 interface Spec {
   media_id: string;
@@ -1884,16 +1888,43 @@ export function NewOrderClient({
                 </label>
                 <label className="block">
                   <span className="block text-sm text-slate-600 mb-1">표지인쇄</span>
-                  <input
-                    type="text"
-                    value={coverPrint}
-                    onChange={(e) => setCoverPrint(e.target.value)}
-                    className={`input-dark w-full rounded-lg border px-3 py-2 text-sm ${
-                      isFieldChanged("coverPrint", coverPrint)
-                        ? "border-amber-400 bg-amber-50"
-                        : "border-slate-300"
-                    }`}
-                  />
+                  <div className="space-y-2">
+                    <select
+                      value={isPrintPreset(coverPrint) ? coverPrint : PRINT_CUSTOM}
+                      onChange={(e) => {
+                        const v = e.target.value;
+                        setCoverPrint(v === PRINT_CUSTOM ? "" : v);
+                      }}
+                      className={`input-dark w-full rounded-lg border px-3 py-2 text-sm ${
+                        isFieldChanged("coverPrint", coverPrint)
+                          ? "border-amber-400 bg-amber-50"
+                          : "border-slate-300"
+                      }`}
+                    >
+                      {PRINT_PRESETS.map((opt) => (
+                        <option key={opt} value={opt}>{opt}</option>
+                      ))}
+                      <option value={PRINT_CUSTOM}>{PRINT_CUSTOM}</option>
+                    </select>
+                    <div
+                      className="grid transition-[grid-template-rows] duration-200 ease-out"
+                      style={{ gridTemplateRows: !coverPrint || isPrintPreset(coverPrint) ? "0fr" : "1fr" }}
+                    >
+                      <div className="min-h-0 overflow-hidden">
+                        <input
+                          type="text"
+                          value={coverPrint}
+                          onChange={(e) => setCoverPrint(e.target.value)}
+                          placeholder="표지인쇄 내용을 직접 입력하세요"
+                          className={`input-dark mt-0 w-full rounded-lg border px-3 py-2 text-sm placeholder:text-slate-500 ${
+                            isFieldChanged("coverPrint", coverPrint)
+                              ? "border-amber-400 bg-amber-50"
+                              : "border-slate-300"
+                          }`}
+                        />
+                      </div>
+                    </div>
+                  </div>
                 </label>
                 <label className="block">
                   <span className="block text-sm text-slate-600 mb-1">내지페이지</span>
@@ -1925,14 +1956,10 @@ export function NewOrderClient({
                   <span className="block text-sm text-slate-600 mb-1">내지인쇄</span>
                   <div className="space-y-2">
                     <select
-                      value={INNER_PRINT_PRESETS.includes(innerPrint as typeof INNER_PRINT_PRESETS[number]) ? innerPrint : INNER_PRINT_CUSTOM}
+                      value={isPrintPreset(innerPrint) ? innerPrint : PRINT_CUSTOM}
                       onChange={(e) => {
                         const v = e.target.value;
-                        if (v === INNER_PRINT_CUSTOM) {
-                          setInnerPrint("");
-                        } else {
-                          setInnerPrint(v);
-                        }
+                        setInnerPrint(v === PRINT_CUSTOM ? "" : v);
                       }}
                       className={`input-dark w-full rounded-lg border px-3 py-2 text-sm ${
                         isFieldChanged("innerPrint", innerPrint)
@@ -1940,24 +1967,29 @@ export function NewOrderClient({
                           : "border-slate-300"
                       }`}
                     >
-                      {INNER_PRINT_PRESETS.map((opt) => (
+                      {PRINT_PRESETS.map((opt) => (
                         <option key={opt} value={opt}>{opt}</option>
                       ))}
-                      <option value={INNER_PRINT_CUSTOM}>{INNER_PRINT_CUSTOM}</option>
+                      <option value={PRINT_CUSTOM}>{PRINT_CUSTOM}</option>
                     </select>
-                    {(!innerPrint || !INNER_PRINT_PRESETS.includes(innerPrint as typeof INNER_PRINT_PRESETS[number])) && (
-                      <input
-                        type="text"
-                        value={innerPrint}
-                        onChange={(e) => setInnerPrint(e.target.value)}
-                        placeholder="내지인쇄 내용을 직접 입력하세요"
-                        className={`input-dark w-full rounded-lg border px-3 py-2 text-sm placeholder:text-slate-500 ${
-                          isFieldChanged("innerPrint", innerPrint)
-                            ? "border-amber-400 bg-amber-50"
-                            : "border-slate-300"
-                        }`}
-                      />
-                    )}
+                    <div
+                      className="grid transition-[grid-template-rows] duration-200 ease-out"
+                      style={{ gridTemplateRows: !innerPrint || isPrintPreset(innerPrint) ? "0fr" : "1fr" }}
+                    >
+                      <div className="min-h-0 overflow-hidden">
+                        <input
+                          type="text"
+                          value={innerPrint}
+                          onChange={(e) => setInnerPrint(e.target.value)}
+                          placeholder="내지인쇄 내용을 직접 입력하세요"
+                          className={`input-dark mt-0 w-full rounded-lg border px-3 py-2 text-sm placeholder:text-slate-500 ${
+                            isFieldChanged("innerPrint", innerPrint)
+                              ? "border-amber-400 bg-amber-50"
+                              : "border-slate-300"
+                          }`}
+                        />
+                      </div>
+                    </div>
                   </div>
                 </label>
               </div>
