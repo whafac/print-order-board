@@ -31,6 +31,15 @@ const SHEET_FINISHING_OPTIONS = [
   "넘버링",
 ] as const;
 
+const INNER_PRINT_PRESETS = [
+  "단면 먹1도",
+  "단면 4도컬러",
+  "양면 먹2도",
+  "양면 8도컬러",
+  "무지(인쇄없음)",
+] as const;
+const INNER_PRINT_CUSTOM = "직접입력";
+
 interface Spec {
   media_id: string;
   media_name: string;
@@ -1914,16 +1923,42 @@ export function NewOrderClient({
                 </label>
                 <label className="block">
                   <span className="block text-sm text-slate-600 mb-1">내지인쇄</span>
-                  <input
-                    type="text"
-                    value={innerPrint}
-                    onChange={(e) => setInnerPrint(e.target.value)}
-                    className={`input-dark w-full rounded-lg border px-3 py-2 text-sm ${
-                      isFieldChanged("innerPrint", innerPrint)
-                        ? "border-amber-400 bg-amber-50"
-                        : "border-slate-300"
-                    }`}
-                  />
+                  <div className="space-y-2">
+                    <select
+                      value={INNER_PRINT_PRESETS.includes(innerPrint as typeof INNER_PRINT_PRESETS[number]) ? innerPrint : INNER_PRINT_CUSTOM}
+                      onChange={(e) => {
+                        const v = e.target.value;
+                        if (v === INNER_PRINT_CUSTOM) {
+                          setInnerPrint("");
+                        } else {
+                          setInnerPrint(v);
+                        }
+                      }}
+                      className={`input-dark w-full rounded-lg border px-3 py-2 text-sm ${
+                        isFieldChanged("innerPrint", innerPrint)
+                          ? "border-amber-400 bg-amber-50"
+                          : "border-slate-300"
+                      }`}
+                    >
+                      {INNER_PRINT_PRESETS.map((opt) => (
+                        <option key={opt} value={opt}>{opt}</option>
+                      ))}
+                      <option value={INNER_PRINT_CUSTOM}>{INNER_PRINT_CUSTOM}</option>
+                    </select>
+                    {(!innerPrint || !INNER_PRINT_PRESETS.includes(innerPrint as typeof INNER_PRINT_PRESETS[number])) && (
+                      <input
+                        type="text"
+                        value={innerPrint}
+                        onChange={(e) => setInnerPrint(e.target.value)}
+                        placeholder="내지인쇄 내용을 직접 입력하세요"
+                        className={`input-dark w-full rounded-lg border px-3 py-2 text-sm placeholder:text-slate-500 ${
+                          isFieldChanged("innerPrint", innerPrint)
+                            ? "border-amber-400 bg-amber-50"
+                            : "border-slate-300"
+                        }`}
+                      />
+                    )}
+                  </div>
                 </label>
               </div>
 
