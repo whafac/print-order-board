@@ -187,14 +187,29 @@ function rowToVendorPricingByHeader(row: string[], header: string[]): VendorPric
   return o as unknown as VendorPricingRow;
 }
 
-// 낱장 제작금액 계산 (동기) - appendJob, API PATCH에서 사용
-export function calculateSheetProductionCost(typeSpecJson: string): number | null {
+// 낱장 매당 단가 조회 (vendor_pricing에서 "낱장", "페이지", "내지" 순으로 조회, 없으면 300)
+async function getSheetUnitPrice(vendorId?: string): Promise<number> {
+  if (!vendorId) return 300;
+  const names = ["낱장", "페이지", "내지"];
+  for (const name of names) {
+    const price = await getVendorPrice(vendorId, "page", name);
+    if (price !== null) return price;
+  }
+  return 300;
+}
+
+// 낱장 제작금액 계산 (비동기) - appendJob, API PATCH에서 사용, vendor_pricing 반영
+export async function calculateSheetProductionCost(
+  typeSpecJson: string,
+  vendorId?: string
+): Promise<number | null> {
   try {
     const typeSpec = JSON.parse(typeSpecJson) as Record<string, unknown>;
     const kindsCount = Math.max(1, parseInt(String(typeSpec.kinds_count || "1"), 10) || 1);
     const sheetsPerKind = Math.max(1, parseInt(String(typeSpec.sheets_per_kind || "1"), 10) || 1);
     const totalSheets = kindsCount * sheetsPerKind;
-    const printCost = totalSheets * 300;
+    const unitPrice = await getSheetUnitPrice(vendorId);
+    const printCost = totalSheets * unitPrice;
     let finishingCost = 0;
     const finishing = String(typeSpec.finishing || "").toLowerCase().trim();
     const printSide = String(typeSpec.print_side || "양면");
@@ -239,10 +254,13 @@ export async function calculateProductionCostFromSpec(
   // 수량 추출
   const qtyNum = parseInt(qty.trim(), 10) || 1;
 
-  // 단가 조회 함수 (vendorId가 있으면 vendor_pricing에서 조회, 없으면 기본값)
+  // 단가 조회 함수 (vendorId가 있으면 vendor_pricing에서 조회, page 타입은 "페이지" 폴백, 없으면 기본값)
   async function getPrice(itemType: "page" | "binding" | "finishing", itemName: string, defaultValue: number): Promise<number> {
     if (vendorId) {
-      const price = await getVendorPrice(vendorId, itemType, itemName);
+      let price = await getVendorPrice(vendorId, itemType, itemName);
+      if (price === null && itemType === "page") {
+        price = await getVendorPrice(vendorId, "page", "페이지");
+      }
       if (price !== null) return price;
     }
     return defaultValue;
@@ -446,7 +464,7 @@ export async function appendJob(row: Omit<JobRow, "job_id" | "created_at" | "las
   // 제작금액 계산 (책자 및 낱장)
   let productionCost: string = "";
   if (row.order_type === "sheet" && row.type_spec_snapshot) {
-    const cost = calculateSheetProductionCost(row.type_spec_snapshot);
+    const cost = await calculateSheetProductionCost(row.type_spec_snapshot, row.vendor_id);
     if (cost !== null) productionCost = String(cost);
   } else if (row.order_type === "book" && row.spec_snapshot) {
     try {

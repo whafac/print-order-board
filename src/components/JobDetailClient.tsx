@@ -300,7 +300,7 @@ export function JobDetailClient({ job }: { job: Job }) {
       <div className="mx-auto max-w-4xl px-4 py-6">
         {isCancelled && (
           <div className="mb-4 rounded-lg border border-slate-200 bg-slate-100 px-4 py-3 text-sm text-slate-700">
-            이 의뢰서는 취소되었습니다. 내용 확인만 가능합니다.
+            이 의뢰서는 취소된 의뢰서입니다.
           </div>
         )}
         <div className="mb-6 flex items-center justify-between gap-2">

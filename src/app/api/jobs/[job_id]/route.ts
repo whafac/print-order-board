@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getJobById, updateJob, updateJobContent, calculateProductionCostFromSpec, calculateSheetProductionCost } from "@/lib/sheets";
+import { getJobById, updateJob, updateJobContent, calculateProductionCostFromSpec, calculateSheetProductionCost, getVendors } from "@/lib/sheets";
 
 export async function GET(
   _request: NextRequest,
@@ -46,9 +46,14 @@ export async function PATCH(
       }
       // 제작금액 재계산 및 포함
       const qty = String(body.qty ?? "");
-      const vendorId = body.vendor_id as string | undefined;
+      let vendorId = body.vendor_id as string | undefined;
+      if (!vendorId && updates.vendor) {
+        const vendors = await getVendors();
+        const matched = vendors.find((v) => v.vendor_name === updates.vendor);
+        if (matched) vendorId = matched.vendor_id;
+      }
       if (orderType === "sheet" && updates.type_spec_snapshot) {
-        const cost = calculateSheetProductionCost(updates.type_spec_snapshot);
+        const cost = await calculateSheetProductionCost(updates.type_spec_snapshot, vendorId);
         if (cost !== null) updates.production_cost = String(cost);
       } else if (orderType === "book" && updates.spec_snapshot) {
         try {
