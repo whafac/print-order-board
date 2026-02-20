@@ -188,6 +188,22 @@ export function NewOrderClient({
     paper_color: string[];
   }>({ size: [], paper_name: [], paper_weight: [], paper_color: [] });
   const [activeSuggestions, setActiveSuggestions] = useState<"size" | "paper_name" | "paper_weight" | "paper_color" | null>(null);
+  const [jobFieldSuggestions, setJobFieldSuggestions] = useState<{
+    requester_name: string[];
+    file_link: string[];
+    changes_note: string[];
+    media_name: string[];
+    orderer_name: string[];
+    qty: string[];
+  }>({
+    requester_name: [],
+    file_link: [],
+    changes_note: [],
+    media_name: [],
+    orderer_name: [],
+    qty: [],
+  });
+  const [activeFieldSuggestion, setActiveFieldSuggestion] = useState<keyof typeof jobFieldSuggestions | null>(null);
   const sizeWrapperRef = useRef<HTMLDivElement>(null);
   const paperNameWrapperRef = useRef<HTMLDivElement>(null);
   const paperWeightWrapperRef = useRef<HTMLDivElement>(null);
@@ -201,6 +217,53 @@ export function NewOrderClient({
   const qtyInputRef = useRef<HTMLInputElement>(null);
   const sheetMediaNameInputRef = useRef<HTMLInputElement>(null);
   const sheetOrdererInputRef = useRef<HTMLInputElement>(null);
+  const requesterWrapperRef = useRef<HTMLDivElement>(null);
+  const fileLinkWrapperRef = useRef<HTMLDivElement>(null);
+  const changesNoteWrapperRef = useRef<HTMLDivElement>(null);
+  const bookOtherMediaWrapperRef = useRef<HTMLDivElement>(null);
+  const bookOrdererWrapperRef = useRef<HTMLDivElement>(null);
+  const sheetMediaWrapperRef = useRef<HTMLDivElement>(null);
+  const sheetOrdererWrapperRef = useRef<HTMLDivElement>(null);
+  const qtyWrapperRef = useRef<HTMLDivElement>(null);
+
+  // 기존 제작의뢰 데이터에서 연관검색어 추출
+  useEffect(() => {
+    fetch("/api/jobs")
+      .then((r) => r.json())
+      .then((data: Array<Record<string, unknown>>) => {
+        if (!Array.isArray(data)) return;
+        const requesterSet = new Set<string>();
+        const fileLinkSet = new Set<string>();
+        const changesNoteSet = new Set<string>();
+        const mediaNameSet = new Set<string>();
+        const ordererSet = new Set<string>();
+        const qtySet = new Set<string>();
+        const MAX = 15;
+        for (const job of data) {
+          const rn = String(job.requester_name ?? "").trim();
+          if (rn && requesterSet.size < MAX) requesterSet.add(rn);
+          const fl = String(job.file_link ?? "").trim();
+          if (fl && fl !== "-" && fileLinkSet.size < MAX) fileLinkSet.add(fl);
+          const cn = String(job.changes_note ?? "").trim();
+          if (cn && cn !== "없음" && changesNoteSet.size < MAX) changesNoteSet.add(cn);
+          const mn = String(job.media_name ?? "").trim();
+          if (mn && mediaNameSet.size < MAX) mediaNameSet.add(mn);
+          const oid = String(job.media_id ?? "").trim();
+          if (oid && oid !== "sheet" && oid !== "other" && ordererSet.size < MAX) ordererSet.add(oid);
+          const q = String(job.qty ?? "").trim();
+          if (q && qtySet.size < MAX) qtySet.add(q);
+        }
+        setJobFieldSuggestions({
+          requester_name: Array.from(requesterSet),
+          file_link: Array.from(fileLinkSet),
+          changes_note: Array.from(changesNoteSet),
+          media_name: Array.from(mediaNameSet),
+          orderer_name: Array.from(ordererSet),
+          qty: Array.from(qtySet),
+        });
+      })
+      .catch(() => {});
+  }, []);
 
   useEffect(() => {
     if (!initialJob) return;
@@ -408,6 +471,22 @@ export function NewOrderClient({
   }, [activeSuggestions]);
 
   useEffect(() => {
+    if (!activeFieldSuggestion) return;
+    const wrappers = [
+      requesterWrapperRef, fileLinkWrapperRef, changesNoteWrapperRef,
+      bookOtherMediaWrapperRef, bookOrdererWrapperRef, sheetMediaWrapperRef,
+      sheetOrdererWrapperRef, qtyWrapperRef,
+    ];
+    const handlePointerDown = (e: PointerEvent) => {
+      const target = e.target as Node;
+      const inside = wrappers.some((r) => r.current?.contains(target));
+      if (!inside) setActiveFieldSuggestion(null);
+    };
+    document.addEventListener("pointerdown", handlePointerDown, true);
+    return () => document.removeEventListener("pointerdown", handlePointerDown, true);
+  }, [activeFieldSuggestion]);
+
+  useEffect(() => {
     if ((!mediaId || mediaId === MEDIA_OTHER) && !editJobId) {
       setSpec(null);
       setVendor("");
@@ -585,6 +664,44 @@ export function NewOrderClient({
               e.stopPropagation();
               onSelect(s);
               setActiveSuggestions(null);
+            }}
+          >
+            {s}
+          </li>
+        ))}
+      </ul>
+    );
+  }
+
+  function FieldSuggestionDropdown({
+    field,
+    value,
+    onSelect,
+  }: {
+    field: keyof typeof jobFieldSuggestions;
+    value: string;
+    onSelect: (s: string) => void;
+  }) {
+    const list = jobFieldSuggestions[field];
+    const filtered = filterSuggestions(list, value);
+    const open = activeFieldSuggestion === field && filtered.length > 0;
+    if (!open) return null;
+    return (
+      <ul
+        className="absolute left-0 right-0 top-full z-10 mt-0.5 max-h-48 overflow-auto rounded-lg border border-slate-200 bg-white py-1 shadow-lg"
+        onPointerDown={(e) => e.preventDefault()}
+      >
+        {filtered.map((s) => (
+          <li
+            key={s}
+            role="button"
+            tabIndex={-1}
+            className="cursor-pointer px-3 py-2 text-sm text-slate-700 hover:bg-slate-100 active:bg-slate-200"
+            onPointerDown={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              onSelect(s);
+              setActiveFieldSuggestion(null);
             }}
           >
             {s}
@@ -1312,14 +1429,22 @@ export function NewOrderClient({
             <h2 className="text-sm font-medium text-slate-500">공통 입력</h2>
             <label className="block">
               <span className="block text-sm text-slate-600 mb-1">의뢰자 이름</span>
-              <input
-                ref={requesterNameInputRef}
-                type="text"
-                value={requesterName}
-                onChange={(e) => setRequesterName(e.target.value)}
-                className="input-dark w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
-                required
-              />
+              <div ref={requesterWrapperRef} className="relative">
+                <input
+                  ref={requesterNameInputRef}
+                  type="text"
+                  value={requesterName}
+                  onChange={(e) => setRequesterName(e.target.value)}
+                  onFocus={() => setActiveFieldSuggestion("requester_name")}
+                  className="input-dark w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+                  required
+                />
+                <FieldSuggestionDropdown
+                  field="requester_name"
+                  value={requesterName}
+                  onSelect={(s) => setRequesterName(s)}
+                />
+              </div>
             </label>
             {orderType === "book" ? (
               <>
@@ -1343,14 +1468,22 @@ export function NewOrderClient({
                     style={{ gridTemplateRows: mediaId === MEDIA_OTHER ? "1fr" : "0fr" }}
                   >
                     <div className="overflow-hidden">
-                      <input
-                        ref={bookOrdererNameInputRef}
-                        type="text"
-                        value={bookOtherMediaName}
-                        onChange={(e) => setBookOtherMediaName(e.target.value)}
-                        placeholder="매체명을 입력하세요"
-                        className="input-dark mt-2 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm placeholder:text-slate-500"
-                      />
+                      <div ref={bookOtherMediaWrapperRef} className="relative mt-2">
+                        <input
+                          ref={bookOrdererNameInputRef}
+                          type="text"
+                          value={bookOtherMediaName}
+                          onChange={(e) => setBookOtherMediaName(e.target.value)}
+                          onFocus={() => setActiveFieldSuggestion("media_name")}
+                          placeholder="매체명을 입력하세요"
+                          className="input-dark w-full rounded-lg border border-slate-300 px-3 py-2 text-sm placeholder:text-slate-500"
+                        />
+                        <FieldSuggestionDropdown
+                          field="media_name"
+                          value={bookOtherMediaName}
+                          onSelect={(s) => setBookOtherMediaName(s)}
+                        />
+                      </div>
                     </div>
                   </div>
                   {specs.length === 0 && mediaId !== MEDIA_OTHER && (
@@ -1363,51 +1496,83 @@ export function NewOrderClient({
                 {mediaId && (
                   <label className="block">
                     <span className="block text-sm text-slate-600 mb-1">발주사 (매체ID)</span>
-                    <input
-                      ref={bookOrdererInputRef}
-                      type="text"
-                      value={bookOrdererName}
-                      onChange={(e) => setBookOrdererName(e.target.value)}
-                      placeholder="발주사를 입력하세요"
-                      className="input-dark w-full rounded-lg border border-slate-300 px-3 py-2 text-sm placeholder:text-slate-500"
-                    />
+                    <div ref={bookOrdererWrapperRef} className="relative">
+                      <input
+                        ref={bookOrdererInputRef}
+                        type="text"
+                        value={bookOrdererName}
+                        onChange={(e) => setBookOrdererName(e.target.value)}
+                        onFocus={() => setActiveFieldSuggestion("orderer_name")}
+                        placeholder="발주사를 입력하세요"
+                        className="input-dark w-full rounded-lg border border-slate-300 px-3 py-2 text-sm placeholder:text-slate-500"
+                      />
+                      <FieldSuggestionDropdown
+                        field="orderer_name"
+                        value={bookOrdererName}
+                        onSelect={(s) => setBookOrdererName(s)}
+                      />
+                    </div>
                   </label>
                 )}
                 <label className="block">
                   <span className="block text-sm text-slate-600 mb-1">수량</span>
-                  <input
-                    ref={qtyInputRef}
-                    type="text"
-                    value={qty}
-                    onChange={(e) => setQty(e.target.value)}
-                    className="input-dark w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
-                    required
-                  />
+                  <div ref={qtyWrapperRef} className="relative">
+                    <input
+                      ref={qtyInputRef}
+                      type="text"
+                      value={qty}
+                      onChange={(e) => setQty(e.target.value)}
+                      onFocus={() => setActiveFieldSuggestion("qty")}
+                      className="input-dark w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+                      required
+                    />
+                    <FieldSuggestionDropdown
+                      field="qty"
+                      value={qty}
+                      onSelect={(s) => setQty(s)}
+                    />
+                  </div>
                 </label>
               </>
             ) : (
               <>
                 <label className="block">
                   <span className="block text-sm text-slate-600 mb-1">매체명</span>
-                  <input
-                    ref={sheetMediaNameInputRef}
-                    type="text"
-                    value={sheetMediaName}
-                    onChange={(e) => setSheetMediaName(e.target.value)}
-                    placeholder="낱장 인쇄물"
-                    className="input-dark w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
-                  />
+                  <div ref={sheetMediaWrapperRef} className="relative">
+                    <input
+                      ref={sheetMediaNameInputRef}
+                      type="text"
+                      value={sheetMediaName}
+                      onChange={(e) => setSheetMediaName(e.target.value)}
+                      onFocus={() => setActiveFieldSuggestion("media_name")}
+                      placeholder="낱장 인쇄물"
+                      className="input-dark w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+                    />
+                    <FieldSuggestionDropdown
+                      field="media_name"
+                      value={sheetMediaName}
+                      onSelect={(s) => setSheetMediaName(s)}
+                    />
+                  </div>
                 </label>
                 <label className="block">
                   <span className="block text-sm text-slate-600 mb-1">발주사</span>
-                  <input
-                    ref={sheetOrdererInputRef}
-                    type="text"
-                    value={sheetOrdererName}
-                    onChange={(e) => setSheetOrdererName(e.target.value)}
-                    placeholder="발주사를 입력하세요"
-                    className="input-dark w-full rounded-lg border border-slate-300 px-3 py-2 text-sm placeholder:text-slate-500"
-                  />
+                  <div ref={sheetOrdererWrapperRef} className="relative">
+                    <input
+                      ref={sheetOrdererInputRef}
+                      type="text"
+                      value={sheetOrdererName}
+                      onChange={(e) => setSheetOrdererName(e.target.value)}
+                      onFocus={() => setActiveFieldSuggestion("orderer_name")}
+                      placeholder="발주사를 입력하세요"
+                      className="input-dark w-full rounded-lg border border-slate-300 px-3 py-2 text-sm placeholder:text-slate-500"
+                    />
+                    <FieldSuggestionDropdown
+                      field="orderer_name"
+                      value={sheetOrdererName}
+                      onSelect={(s) => setSheetOrdererName(s)}
+                    />
+                  </div>
                 </label>
               </>
             )}
@@ -1440,22 +1605,38 @@ export function NewOrderClient({
             </label>
             <label className="block">
               <span className="block text-sm text-slate-600 mb-1">파일 링크</span>
-              <input
-                type="url"
-                value={fileLink}
-                onChange={(e) => setFileLink(e.target.value)}
-                placeholder="https://..."
-                className="input-dark w-full rounded-lg border border-slate-300 px-3 py-2 text-sm placeholder:text-slate-500"
-              />
+              <div ref={fileLinkWrapperRef} className="relative">
+                <input
+                  type="url"
+                  value={fileLink}
+                  onChange={(e) => setFileLink(e.target.value)}
+                  onFocus={() => setActiveFieldSuggestion("file_link")}
+                  placeholder="https://..."
+                  className="input-dark w-full rounded-lg border border-slate-300 px-3 py-2 text-sm placeholder:text-slate-500"
+                />
+                <FieldSuggestionDropdown
+                  field="file_link"
+                  value={fileLink}
+                  onSelect={(s) => setFileLink(s)}
+                />
+              </div>
             </label>
             <label className="block">
               <span className="block text-sm text-slate-600 mb-1">변경 및 요청사항</span>
-              <textarea
-                value={changesNote}
-                onChange={(e) => setChangesNote(e.target.value)}
-                rows={2}
-                className="input-dark w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
-              />
+              <div ref={changesNoteWrapperRef} className="relative">
+                <textarea
+                  value={changesNote}
+                  onChange={(e) => setChangesNote(e.target.value)}
+                  onFocus={() => setActiveFieldSuggestion("changes_note")}
+                  rows={2}
+                  className="input-dark w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+                />
+                <FieldSuggestionDropdown
+                  field="changes_note"
+                  value={changesNote}
+                  onSelect={(s) => setChangesNote(s)}
+                />
+              </div>
             </label>
           </section>
 
