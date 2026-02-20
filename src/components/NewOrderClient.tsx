@@ -92,6 +92,8 @@ export function NewOrderClient({
   const [bookOtherMediaName, setBookOtherMediaName] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [toast, setToast] = useState<"ok" | "err" | null>(null);
+  const [pageUnitPrice, setPageUnitPrice] = useState(300);
+  const [sheetUnitPrice, setSheetUnitPrice] = useState(300);
   const previewWindowRef = useRef<Window | null>(null);
 
   // 책자 전용 제작사양 (수정 가능)
@@ -306,6 +308,51 @@ export function NewOrderClient({
         })
     ]);
   }, []);
+
+  // 제작업체 변경 시 vendor_pricing에서 페이지/낱장 단가 조회
+  useEffect(() => {
+    if (!vendor?.trim()) {
+      setPageUnitPrice(300);
+      setSheetUnitPrice(300);
+      return;
+    }
+    const v = vendors.find((x) => x.vendor_name === vendor);
+    if (!v?.vendor_id) {
+      setPageUnitPrice(300);
+      setSheetUnitPrice(300);
+      return;
+    }
+    fetch(`/api/vendor-pricing?vendor_id=${encodeURIComponent(v.vendor_id)}`)
+      .then((r) => r.json())
+      .then((data: { item_type?: string; item_name?: string; unit_price?: number }[]) => {
+        if (!Array.isArray(data)) return;
+        let pagePrice = 300;
+        let sheetPrice = 300;
+        const names = ["표지", "내지", "추가내지", "페이지"];
+        const sheetNames = ["낱장", "페이지", "내지"];
+        for (const row of data) {
+          if (row.item_type === "page" && typeof row.unit_price === "number") {
+            const name = String(row.item_name ?? "").trim();
+            if (names.includes(name) && pagePrice === 300) pagePrice = row.unit_price;
+            if (sheetNames.includes(name) && sheetPrice === 300) sheetPrice = row.unit_price;
+          }
+        }
+        if (pagePrice === 300) {
+          const pageRow = data.find((r) => r.item_type === "page");
+          if (pageRow && typeof pageRow.unit_price === "number") pagePrice = pageRow.unit_price;
+        }
+        if (sheetPrice === 300) {
+          const sheetRow = data.find((r) => r.item_type === "page");
+          if (sheetRow && typeof sheetRow.unit_price === "number") sheetPrice = sheetRow.unit_price;
+        }
+        setPageUnitPrice(pagePrice);
+        setSheetUnitPrice(sheetPrice);
+      })
+      .catch(() => {
+        setPageUnitPrice(300);
+        setSheetUnitPrice(300);
+      });
+  }, [vendor, vendors]);
 
   useEffect(() => {
     if (orderType !== "sheet") return;
@@ -695,17 +742,17 @@ export function NewOrderClient({
 
       // 표지 페이지 수 계산 (단면: 2페이지, 양면: 4페이지)
       const coverPageCount = coverPrint.includes("단면") ? 2 : 4;
-      const coverCost = coverPageCount * 300 * qtyNum;
+      const coverCost = coverPageCount * pageUnitPrice * qtyNum;
 
       // 내지 페이지 수 계산
       const innerPageCount = extractPageCount(innerPages);
-      const innerCost = innerPageCount * 300 * qtyNum;
+      const innerCost = innerPageCount * pageUnitPrice * qtyNum;
 
       // 추가 내지 비용 계산
       let additionalInnerCost = 0;
       additionalInnerPages.forEach((item) => {
         const pageCount = extractPageCount(item.pages);
-        additionalInnerCost += pageCount * 300 * qtyNum;
+        additionalInnerCost += pageCount * pageUnitPrice * qtyNum;
       });
 
       // 제본 비용 (권당)
@@ -758,6 +805,7 @@ export function NewOrderClient({
         coverPageCount,
         innerPageCount,
         additionalInnerPagesTotal: additionalInnerPages.reduce((sum, item) => sum + extractPageCount(item.pages), 0),
+        pageUnitPrice,
       };
     } else if (orderType === "sheet") {
       // 낱장 금액 계산
@@ -765,8 +813,8 @@ export function NewOrderClient({
       const sheetsPerKind = Math.max(1, parseInt(sheetsPerKindStr, 10) || 1);
       const totalSheets = kindsCount * sheetsPerKind;
 
-      // 기본 인쇄 비용 (매당 300원)
-      const printCost = totalSheets * 300;
+      // 인쇄 비용 (vendor_pricing 조회 단가 적용)
+      const printCost = totalSheets * sheetUnitPrice;
 
       // 인쇄 컬러 비용 (컬러인 경우 추가 비용 없음, 기본 가격에 포함)
       // 먹1도와 컬러의 차이는 별도 계산하지 않음 (기본 가격에 포함)
@@ -817,6 +865,7 @@ export function NewOrderClient({
         qtyNum: totalSheets,
         kindsCount,
         sheetsPerKind,
+        sheetUnitPrice,
       };
     }
 
@@ -1901,18 +1950,18 @@ export function NewOrderClient({
                 <div className="mb-4 rounded-lg bg-slate-50 p-3 text-xs text-slate-600 space-y-1">
                   <div className="font-medium mb-2">계산 내역 (수량: {bookCost.qtyNum}부)</div>
                   <div className="flex justify-between">
-                    <span>표지 ({bookCost.coverPageCount}페이지 × 300원 × {bookCost.qtyNum}부)</span>
+                    <span>표지 ({bookCost.coverPageCount}페이지 × {bookCost.pageUnitPrice ?? pageUnitPrice}원 × {bookCost.qtyNum}부)</span>
                     <span className="font-medium">{bookCost.coverCost.toLocaleString()}원</span>
                   </div>
                   {bookCost.innerPageCount > 0 && (
                     <div className="flex justify-between">
-                      <span>내지 ({bookCost.innerPageCount}페이지 × 300원 × {bookCost.qtyNum}부)</span>
+                      <span>내지 ({bookCost.innerPageCount}페이지 × {bookCost.pageUnitPrice ?? pageUnitPrice}원 × {bookCost.qtyNum}부)</span>
                       <span className="font-medium">{bookCost.innerCost.toLocaleString()}원</span>
                     </div>
                   )}
                   {bookCost.additionalInnerCost > 0 && (
                     <div className="flex justify-between">
-                      <span>추가 내지 (총 {bookCost.additionalInnerPagesTotal}페이지 × 300원 × {bookCost.qtyNum}부)</span>
+                      <span>추가 내지 (총 {bookCost.additionalInnerPagesTotal}페이지 × {bookCost.pageUnitPrice ?? pageUnitPrice}원 × {bookCost.qtyNum}부)</span>
                       <span className="font-medium">{bookCost.additionalInnerCost.toLocaleString()}원</span>
                     </div>
                   )}
@@ -1980,7 +2029,7 @@ export function NewOrderClient({
                   <div className="mb-4 rounded-lg bg-slate-50 p-3 text-xs text-slate-600 space-y-1">
                     <div className="font-medium mb-2">계산 내역 (종 수: {sheetCost.kindsCount}종, 총 매 수: {sheetCost.qtyNum}매)</div>
                     <div className="flex justify-between">
-                      <span>인쇄 비용 ({sheetCost.qtyNum}매 × 300원)</span>
+                      <span>인쇄 비용 ({sheetCost.qtyNum}매 × {sheetCost.sheetUnitPrice ?? sheetUnitPrice}원)</span>
                       <span className="font-medium">{sheetCost.printCost.toLocaleString()}원</span>
                     </div>
                     {sheetCost.finishingCost > 0 && (() => {
