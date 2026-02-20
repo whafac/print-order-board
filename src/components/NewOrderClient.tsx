@@ -108,6 +108,8 @@ export function NewOrderClient({
   const [pageUnitPrice, setPageUnitPrice] = useState(300);
   const [sheetUnitPrice, setSheetUnitPrice] = useState(300);
   const previewWindowRef = useRef<Window | null>(null);
+  const coverPrintInputRef = useRef<HTMLInputElement>(null);
+  const innerPrintInputRef = useRef<HTMLInputElement>(null);
 
   // 책자 전용 제작사양 (수정 가능)
   const [trimSize, setTrimSize] = useState("");
@@ -1894,6 +1896,9 @@ export function NewOrderClient({
                       onChange={(e) => {
                         const v = e.target.value;
                         setCoverPrint(v === PRINT_CUSTOM ? "" : v);
+                        if (v === PRINT_CUSTOM) {
+                          setTimeout(() => coverPrintInputRef.current?.focus(), 100);
+                        }
                       }}
                       className={`input-dark w-full rounded-lg border px-3 py-2 text-sm ${
                         isFieldChanged("coverPrint", coverPrint)
@@ -1908,10 +1913,11 @@ export function NewOrderClient({
                     </select>
                     <div
                       className="grid transition-[grid-template-rows] duration-200 ease-out"
-                      style={{ gridTemplateRows: !coverPrint || isPrintPreset(coverPrint) ? "0fr" : "1fr" }}
+                      style={{ gridTemplateRows: isPrintPreset(coverPrint) ? "0fr" : "1fr" }}
                     >
                       <div className="min-h-0 overflow-hidden">
                         <input
+                          ref={coverPrintInputRef}
                           type="text"
                           value={coverPrint}
                           onChange={(e) => setCoverPrint(e.target.value)}
@@ -1960,6 +1966,9 @@ export function NewOrderClient({
                       onChange={(e) => {
                         const v = e.target.value;
                         setInnerPrint(v === PRINT_CUSTOM ? "" : v);
+                        if (v === PRINT_CUSTOM) {
+                          setTimeout(() => innerPrintInputRef.current?.focus(), 100);
+                        }
                       }}
                       className={`input-dark w-full rounded-lg border px-3 py-2 text-sm ${
                         isFieldChanged("innerPrint", innerPrint)
@@ -1974,10 +1983,11 @@ export function NewOrderClient({
                     </select>
                     <div
                       className="grid transition-[grid-template-rows] duration-200 ease-out"
-                      style={{ gridTemplateRows: !innerPrint || isPrintPreset(innerPrint) ? "0fr" : "1fr" }}
+                      style={{ gridTemplateRows: isPrintPreset(innerPrint) ? "0fr" : "1fr" }}
                     >
                       <div className="min-h-0 overflow-hidden">
                         <input
+                          ref={innerPrintInputRef}
                           type="text"
                           value={innerPrint}
                           onChange={(e) => setInnerPrint(e.target.value)}
