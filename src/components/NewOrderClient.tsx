@@ -39,9 +39,19 @@ const PRINT_PRESETS = [
   "무지(인쇄없음)",
 ] as const;
 const PRINT_CUSTOM = "직접입력";
+const COVER_TYPE_PRESETS = [
+  "일반재단형",
+  "한쪽날개형(6p)",
+  "양쪽날개형(8p)",
+  "하드커버형",
+] as const;
 
 function isPrintPreset(value: string): value is (typeof PRINT_PRESETS)[number] {
   return (PRINT_PRESETS as readonly string[]).includes(value);
+}
+
+function isCoverTypePreset(value: string): value is (typeof COVER_TYPE_PRESETS)[number] {
+  return (COVER_TYPE_PRESETS as readonly string[]).includes(value);
 }
 
 interface Spec {
@@ -108,6 +118,7 @@ export function NewOrderClient({
   const [pageUnitPrice, setPageUnitPrice] = useState(300);
   const [sheetUnitPrice, setSheetUnitPrice] = useState(300);
   const previewWindowRef = useRef<Window | null>(null);
+  const coverTypeInputRef = useRef<HTMLInputElement>(null);
   const coverPrintInputRef = useRef<HTMLInputElement>(null);
   const innerPrintInputRef = useRef<HTMLInputElement>(null);
 
@@ -1864,16 +1875,47 @@ export function NewOrderClient({
                 </label>
                 <label className="block">
                   <span className="block text-sm text-slate-600 mb-1">표지유형</span>
-                  <input
-                    type="text"
-                    value={coverType}
-                    onChange={(e) => setCoverType(e.target.value)}
-                    className={`input-dark w-full rounded-lg border px-3 py-2 text-sm ${
-                      isFieldChanged("coverType", coverType)
-                        ? "border-amber-400 bg-amber-50"
-                        : "border-slate-300"
-                    }`}
-                  />
+                  <div className="space-y-2">
+                    <select
+                      value={isCoverTypePreset(coverType) ? coverType : PRINT_CUSTOM}
+                      onChange={(e) => {
+                        const v = e.target.value;
+                        setCoverType(v === PRINT_CUSTOM ? "" : v);
+                        if (v === PRINT_CUSTOM) {
+                          setTimeout(() => coverTypeInputRef.current?.focus(), 100);
+                        }
+                      }}
+                      className={`input-dark w-full rounded-lg border px-3 py-2 text-sm ${
+                        isFieldChanged("coverType", coverType)
+                          ? "border-amber-400 bg-amber-50"
+                          : "border-slate-300"
+                      }`}
+                    >
+                      {COVER_TYPE_PRESETS.map((opt) => (
+                        <option key={opt} value={opt}>{opt}</option>
+                      ))}
+                      <option value={PRINT_CUSTOM}>{PRINT_CUSTOM}</option>
+                    </select>
+                    <div
+                      className="grid transition-[grid-template-rows] duration-200 ease-out"
+                      style={{ gridTemplateRows: isCoverTypePreset(coverType) ? "0fr" : "1fr" }}
+                    >
+                      <div className="min-h-0 overflow-hidden">
+                        <input
+                          ref={coverTypeInputRef}
+                          type="text"
+                          value={coverType}
+                          onChange={(e) => setCoverType(e.target.value)}
+                          placeholder="표지유형을 직접 입력하세요"
+                          className={`input-dark mt-0 w-full rounded-lg border px-3 py-2 text-sm placeholder:text-slate-500 ${
+                            isFieldChanged("coverType", coverType)
+                              ? "border-amber-400 bg-amber-50"
+                              : "border-slate-300"
+                          }`}
+                        />
+                      </div>
+                    </div>
+                  </div>
                 </label>
                 <label className="block">
                   <span className="block text-sm text-slate-600 mb-1">표지용지</span>
