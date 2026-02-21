@@ -71,6 +71,7 @@ function formatCreatedAt(iso: string | undefined): string {
 
 export function JobDetailClient({ job }: { job: Job }) {
   const router = useRouter();
+  const [currentStatus, setCurrentStatus] = useState(job.status);
   const [status, setStatus] = useState(job.status);
   const [editorName, setEditorName] = useState(job.last_updated_by || getStoredEditor());
   const [saving, setSaving] = useState(false);
@@ -84,8 +85,8 @@ export function JobDetailClient({ job }: { job: Job }) {
     return current !== null ? String(current) : "";
   });
 
-  const canCancel = status === "접수";
-  const isCancelled = status === "취소";
+  const canCancel = currentStatus === "접수";
+  const isCancelled = currentStatus === "취소";
   const canEditProductionCost = (userRole === "vendor" || userRole === "admin") && !isCancelled;
 
   let spec: Record<string, unknown> = {};
@@ -260,19 +261,26 @@ export function JobDetailClient({ job }: { job: Job }) {
   }
 
   async function saveStatus() {
+    const updater = editorName.trim();
+    if (status === "취소" && !updater) {
+      window.alert("취소자 이름을 입력해 주세요.");
+      setToast("err");
+      return;
+    }
     setSaving(true);
     setToast(null);
-    if (editorName) setStoredEditor(editorName);
+    if (updater) setStoredEditor(updater);
     try {
       const res = await fetch(`/api/jobs/${job.job_id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ status, last_updated_by: editorName }),
+        body: JSON.stringify({ status, last_updated_by: updater }),
       });
       if (!res.ok) {
         setToast("err");
         return;
       }
+      setCurrentStatus(status);
       setToast("ok");
       router.refresh();
     } catch {
@@ -283,20 +291,26 @@ export function JobDetailClient({ job }: { job: Job }) {
   }
 
   async function handleCancel() {
+    if (!editorName.trim()) {
+      window.alert("취소자 이름을 입력해 주세요.");
+      setToast("err");
+      return;
+    }
     if (!confirm("현재 의뢰서를 취소하시겠습니까?")) return;
     setCancelling(true);
     setToast(null);
-    if (editorName) setStoredEditor(editorName);
+    if (editorName.trim()) setStoredEditor(editorName.trim());
     try {
       const res = await fetch(`/api/jobs/${job.job_id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ status: "취소", last_updated_by: editorName }),
+        body: JSON.stringify({ status: "취소", last_updated_by: editorName.trim() }),
       });
       if (!res.ok) {
         setToast("err");
         return;
       }
+      setCurrentStatus("취소");
       setStatus("취소");
       setToast("ok");
       router.refresh();
