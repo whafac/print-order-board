@@ -678,7 +678,7 @@ export async function updateJobContent(jobId: string, updates: Partial<JobRow>):
 
 export async function updateJob(
   jobId: string,
-  updates: { status?: string; last_updated_by?: string; production_cost?: string }
+  updates: { status?: string; last_updated_by?: string; production_cost?: string; changes_note?: string }
 ): Promise<boolean> {
   const { sheets, sheetId } = await getSheets();
   const res = await sheets.spreadsheets.values.get({
@@ -691,6 +691,7 @@ export async function updateJob(
   const hasHeader = headerCol(header, "job_id") !== -1;
   const jobIdCol = hasHeader ? headerCol(header, "job_id") : 0;
   const statusCol = hasHeader ? headerCol(header, "status") : JOB_HEADERS.indexOf("status");
+  const changesNoteCol = hasHeader ? headerCol(header, "changes_note") : JOB_HEADERS.indexOf("changes_note");
   const lastUpdatedAtCol = hasHeader ? headerCol(header, "last_updated_at") : JOB_HEADERS.indexOf("last_updated_at");
   const lastUpdatedByCol = hasHeader ? headerCol(header, "last_updated_by") : JOB_HEADERS.indexOf("last_updated_by");
   const productionCostCol = hasHeader ? headerCol(header, "production_cost") : JOB_HEADERS.indexOf("production_cost");
@@ -702,6 +703,7 @@ export async function updateJob(
     const newRow: string[] = [...row];
     while (newRow.length < JOB_HEADERS.length) newRow.push("");
     if (updates.status !== undefined && statusCol >= 0) newRow[statusCol] = updates.status;
+    if (updates.changes_note !== undefined && changesNoteCol >= 0) newRow[changesNoteCol] = updates.changes_note;
     if (updates.last_updated_by !== undefined && lastUpdatedByCol >= 0) newRow[lastUpdatedByCol] = updates.last_updated_by;
     if (updates.production_cost !== undefined && productionCostCol >= 0) newRow[productionCostCol] = updates.production_cost;
     if (lastUpdatedAtCol >= 0) newRow[lastUpdatedAtCol] = new Date().toISOString();

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 
@@ -75,10 +75,18 @@ export function JobDetailClient({ job }: { job: Job }) {
   const [editorName, setEditorName] = useState(job.last_updated_by || getStoredEditor());
   const [saving, setSaving] = useState(false);
   const [cancelling, setCancelling] = useState(false);
+  const [savingCost, setSavingCost] = useState(false);
   const [toast, setToast] = useState<"ok" | "err" | null>(null);
+  const [userRole, setUserRole] = useState<"admin" | "vendor" | "requester">("admin");
+  const [vendorName, setVendorName] = useState<string | null>(null);
+  const [costInput, setCostInput] = useState(() => {
+    const current = parseStoredProductionCost(job.production_cost);
+    return current !== null ? String(current) : "";
+  });
 
   const canCancel = status === "접수";
   const isCancelled = status === "취소";
+  const canEditProductionCost = (userRole === "vendor" || userRole === "admin") && !isCancelled;
 
   let spec: Record<string, unknown> = {};
   try {
@@ -90,6 +98,22 @@ export function JobDetailClient({ job }: { job: Job }) {
     if (job.type_spec_snapshot) typeSpec = JSON.parse(job.type_spec_snapshot);
   } catch {}
   const isSheet = job.order_type === "sheet";
+
+  useEffect(() => {
+    async function loadRole() {
+      try {
+        const res = await fetch("/api/auth/role");
+        const data = await res.json();
+        if (res.ok) {
+          setUserRole(data.role || "admin");
+          setVendorName(data.vendor_name || null);
+        }
+      } catch {
+        // ignore
+      }
+    }
+    loadRole();
+  }, []);
 
   // 제작금액 계산 함수 (책자 및 낱장) - 구글시트에 저장된 값 우선 사용
   function calculateProductionCost() {
@@ -283,6 +307,39 @@ export function JobDetailClient({ job }: { job: Job }) {
     }
   }
 
+  async function saveProductionCost() {
+    const parsed = parseStoredProductionCost(costInput);
+    if (parsed === null || parsed < 0) {
+      setToast("err");
+      return;
+    }
+    const updater = editorName.trim() || (userRole === "vendor" ? (vendorName || "제작업체") : "관리자");
+    setSavingCost(true);
+    setToast(null);
+    if (updater) setStoredEditor(updater);
+    try {
+      const res = await fetch(`/api/jobs/${job.job_id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          production_cost: String(parsed),
+          last_updated_by: updater,
+        }),
+      });
+      if (!res.ok) {
+        setToast("err");
+        return;
+      }
+      setEditorName(updater);
+      setToast("ok");
+      router.refresh();
+    } catch {
+      setToast("err");
+    } finally {
+      setSavingCost(false);
+    }
+  }
+
   return (
     <>
       <header className="sticky top-0 z-10 border-b border-slate-200 bg-white/95 backdrop-blur">
@@ -469,6 +526,34 @@ export function JobDetailClient({ job }: { job: Job }) {
                   <div className="text-2xl font-bold text-red-600">{cost.total.toLocaleString()}원</div>
                 </div>
               </div>
+              {canEditProductionCost && (
+                <div className="mt-4 border-t border-slate-200 pt-4">
+                  <div className="mb-2 text-xs text-slate-500">
+                    {userRole === "vendor" ? "제작업체 금액 강제 수정" : "금액 강제 수정"}
+                  </div>
+                  <div className="flex flex-wrap items-end gap-3">
+                    <label className="flex flex-col gap-1">
+                      <span className="text-xs text-slate-500">총금액 (원)</span>
+                      <input
+                        type="text"
+                        inputMode="numeric"
+                        value={costInput}
+                        onChange={(e) => setCostInput(e.target.value)}
+                        placeholder="예: 22000"
+                        className="input-dark w-40 rounded border border-slate-300 px-3 py-2 text-sm"
+                      />
+                    </label>
+                    <button
+                      type="button"
+                      onClick={saveProductionCost}
+                      disabled={savingCost}
+                      className="rounded-lg bg-slate-800 px-4 py-2 text-sm text-white hover:bg-slate-700 disabled:opacity-50"
+                    >
+                      {savingCost ? "저장 중…" : "금액 적용"}
+                    </button>
+                  </div>
+                </div>
+              )}
             </section>
           );
         })()}

@@ -1,5 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getJobById, updateJob, updateJobContent, calculateProductionCostFromSpec, calculateSheetProductionCost, getVendors } from "@/lib/sheets";
+import { getUserRole, getVendorId } from "@/lib/auth";
+
+function parseStoredProductionCost(value: unknown): number | null {
+  const normalized = String(value ?? "").replace(/[^\d-]/g, "");
+  if (!normalized || normalized === "-") return null;
+  const parsed = parseInt(normalized, 10);
+  return Number.isNaN(parsed) ? null : parsed;
+}
 
 export async function GET(
   _request: NextRequest,
@@ -31,6 +39,27 @@ export async function PATCH(
   const isContentUpdate = "requester_name" in body || "order_type" in body || "spec_snapshot" in body || "type_spec_snapshot" in body;
 
   try {
+    const currentJob = await getJobById(job_id);
+    if (!currentJob) return NextResponse.json({ error: "Not found" }, { status: 404 });
+
+    const userRole = await getUserRole();
+    const currentVendorId = await getVendorId();
+    let currentVendorName = "";
+    if (userRole === "vendor") {
+      const vendors = await getVendors();
+      currentVendorName = vendors.find((v) => v.vendor_id === currentVendorId)?.vendor_name ?? "";
+      const belongsToVendor = Boolean(
+        (currentVendorId && currentJob.vendor_id && currentJob.vendor_id === currentVendorId) ||
+        (currentVendorName && currentJob.vendor === currentVendorName)
+      );
+      if (!belongsToVendor) {
+        return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+      }
+      if (isContentUpdate) {
+        return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+      }
+    }
+
     if (isContentUpdate) {
       const updates: Record<string, string> = {};
       const keys = ["requester_name", "media_id", "media_name", "vendor", "due_date", "qty", "file_link", "changes_note", "spec_snapshot", "type_spec_snapshot", "last_updated_by"];
@@ -68,10 +97,30 @@ export async function PATCH(
       const ok = await updateJobContent(job_id, updates);
       if (!ok) return NextResponse.json({ error: "Not found" }, { status: 404 });
     } else {
+      let changesNoteForAudit: string | undefined;
+      if (body.production_cost !== undefined) {
+        const newCost = parseStoredProductionCost(body.production_cost);
+        if (newCost === null) {
+          return NextResponse.json({ error: "Invalid production_cost" }, { status: 400 });
+        }
+        const prevCost = parseStoredProductionCost(currentJob.production_cost);
+        const prevCostLabel = prevCost !== null ? `${prevCost.toLocaleString()}원` : (currentJob.production_cost || "-");
+        const updater =
+          String(body.last_updated_by ?? "").trim() ||
+          (userRole === "vendor" ? (currentVendorName || "제작업체") : "관리자");
+        const now = new Date().toISOString();
+        const auditLine = `[금액수정 ${now}] ${updater}: ${prevCostLabel} -> ${newCost.toLocaleString()}원`;
+        const baseNote = String(currentJob.changes_note ?? "").trim();
+        changesNoteForAudit =
+          baseNote && baseNote !== "없음"
+            ? `${baseNote}\n${auditLine}`
+            : auditLine;
+      }
       const ok = await updateJob(job_id, {
         status: body.status as string | undefined,
         last_updated_by: body.last_updated_by as string | undefined,
         production_cost: body.production_cost as string | undefined,
+        changes_note: changesNoteForAudit,
       });
       if (!ok) return NextResponse.json({ error: "Not found" }, { status: 404 });
     }
