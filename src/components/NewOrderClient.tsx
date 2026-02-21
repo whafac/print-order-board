@@ -1098,7 +1098,7 @@ export function NewOrderClient({
         <div><dt>제본</dt><dd>${esc(binding.trim() || "-")}</dd></div>
         <div><dt>후가공</dt><dd>${esc(finishingSpec.trim() || "-")}</dd></div>
         <div><dt>포장·납품</dt><dd>${esc(packagingDelivery.trim() || "-")}</dd></div>
-        <div class="full"><dt>파일규격</dt><dd>${esc(fileRule.trim() || "-")}</dd></div>
+        <div class="full"><dt>특이사항</dt><dd>${esc(fileRule.trim() || "-")}</dd></div>
       </dl>
     </div>
     ${additionalInnerPagesBlock}`
@@ -2208,7 +2208,7 @@ export function NewOrderClient({
                   />
                 </label>
                 <label className="block sm:col-span-2">
-                  <span className="block text-sm text-slate-600 mb-1">파일규격</span>
+                  <span className="block text-sm text-slate-600 mb-1">특이사항</span>
                   <input
                     type="text"
                     value={fileRule}

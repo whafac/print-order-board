@@ -468,7 +468,7 @@ export function JobDetailClient({ job }: { job: Job }) {
                 <div><dt className="text-slate-500">제본</dt><dd className="text-slate-800">{String(spec.binding ?? "-")}</dd></div>
                 <div><dt className="text-slate-500">후가공</dt><dd className="text-slate-800">{String(spec.finishing ?? "-")}</dd></div>
                 <div><dt className="text-slate-500">포장·납품</dt><dd className="text-slate-800">{String(spec.packaging_delivery ?? "-")}</dd></div>
-                <div className="sm:col-span-2"><dt className="text-slate-500">파일규격</dt><dd className="text-slate-800">{String(spec.file_rule ?? "-")}</dd></div>
+                <div className="sm:col-span-2"><dt className="text-slate-500">특이사항</dt><dd className="text-slate-800">{String(spec.file_rule ?? "-")}</dd></div>
               </dl>
             </section>
             {(() => {
