@@ -71,12 +71,20 @@ function formatCreatedAt(iso: string | undefined): string {
   return `${y}-${m}-${day} ${h}:${min}`;
 }
 
+function parseStoredProductionCost(value: string | undefined): number | null {
+  if (!value) return null;
+  const normalized = String(value).replace(/[^\d-]/g, "");
+  if (!normalized || normalized === "-") return null;
+  const parsed = parseInt(normalized, 10);
+  return Number.isNaN(parsed) ? null : parsed;
+}
+
 // 제작금액 가져오기 함수 (구글시트에 저장된 값 우선, 없으면 계산)
 function getTotalAmount(job: Job): number | null {
   // 구글시트에 저장된 제작금액이 있으면 사용
-  if (job.production_cost && job.production_cost.trim() !== "") {
-    const cost = parseInt(job.production_cost.trim(), 10);
-    if (!Number.isNaN(cost)) return cost;
+  const storedCost = parseStoredProductionCost(job.production_cost);
+  if (storedCost !== null) {
+    return storedCost;
   }
 
   // 저장된 값이 없으면 계산

@@ -24,6 +24,14 @@ interface Job {
   production_cost?: string;
 }
 
+function parseStoredProductionCost(value: string | undefined): number | null {
+  if (!value) return null;
+  const normalized = String(value).replace(/[^\d-]/g, "");
+  if (!normalized || normalized === "-") return null;
+  const parsed = parseInt(normalized, 10);
+  return Number.isNaN(parsed) ? null : parsed;
+}
+
 const STATUS_OPTIONS = ["접수", "진행", "납품", "검수완료", "완료", "취소"];
 
 const EDITOR_KEY = "print_order_editor_name";
@@ -86,16 +94,14 @@ export function JobDetailClient({ job }: { job: Job }) {
   // 제작금액 계산 함수 (책자 및 낱장) - 구글시트에 저장된 값 우선 사용
   function calculateProductionCost() {
     // 구글시트에 저장된 제작금액이 있으면 사용
-    if (job.production_cost && job.production_cost.trim() !== "") {
-      const cost = parseInt(job.production_cost.trim(), 10);
-      if (!Number.isNaN(cost)) {
-        // 부동소수점 정밀도 문제 해결: Math.round 사용
-        // 원래 계산: subtotal + Math.floor(subtotal * 0.1) = total
-        // 역산: subtotal = Math.round(total / 1.1)
-        const subtotal = Math.round(cost / 1.1);
-        const vat = cost - subtotal;
-        return { subtotal, vat, total: cost };
-      }
+    const cost = parseStoredProductionCost(job.production_cost);
+    if (cost !== null) {
+      // 부동소수점 정밀도 문제 해결: Math.round 사용
+      // 원래 계산: subtotal + Math.floor(subtotal * 0.1) = total
+      // 역산: subtotal = Math.round(total / 1.1)
+      const subtotal = Math.round(cost / 1.1);
+      const vat = cost - subtotal;
+      return { subtotal, vat, total: cost };
     }
 
     // 저장된 값이 없으면 계산
