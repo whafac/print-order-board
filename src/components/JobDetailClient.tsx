@@ -75,7 +75,6 @@ export function JobDetailClient({ job }: { job: Job }) {
   const [status, setStatus] = useState(job.status);
   const [editorName, setEditorName] = useState(job.last_updated_by || getStoredEditor());
   const [saving, setSaving] = useState(false);
-  const [cancelling, setCancelling] = useState(false);
   const [savingCost, setSavingCost] = useState(false);
   const [toast, setToast] = useState<"ok" | "err" | null>(null);
   const [userRole, setUserRole] = useState<"admin" | "vendor" | "requester">("admin");
@@ -85,7 +84,6 @@ export function JobDetailClient({ job }: { job: Job }) {
     return current !== null ? String(current) : "";
   });
 
-  const canCancel = currentStatus === "접수";
   const isCancelled = currentStatus === "취소";
   const canEditProductionCost = (userRole === "vendor" || userRole === "admin") && !isCancelled;
 
@@ -290,37 +288,6 @@ export function JobDetailClient({ job }: { job: Job }) {
     }
   }
 
-  async function handleCancel() {
-    if (!editorName.trim()) {
-      window.alert("취소자 이름을 입력해 주세요.");
-      setToast("err");
-      return;
-    }
-    if (!confirm("현재 의뢰서를 취소하시겠습니까?")) return;
-    setCancelling(true);
-    setToast(null);
-    if (editorName.trim()) setStoredEditor(editorName.trim());
-    try {
-      const res = await fetch(`/api/jobs/${job.job_id}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ status: "취소", last_updated_by: editorName.trim() }),
-      });
-      if (!res.ok) {
-        setToast("err");
-        return;
-      }
-      setCurrentStatus("취소");
-      setStatus("취소");
-      setToast("ok");
-      router.refresh();
-    } catch {
-      setToast("err");
-    } finally {
-      setCancelling(false);
-    }
-  }
-
   async function saveProductionCost() {
     const parsed = parseStoredProductionCost(costInput);
     if (parsed === null || parsed < 0) {
@@ -392,25 +359,6 @@ export function JobDetailClient({ job }: { job: Job }) {
               {job.job_id} 📋
             </button>
           </div>
-          {canCancel ? (
-            <button
-              type="button"
-              onClick={handleCancel}
-              disabled={cancelling}
-              className="rounded-lg bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700 disabled:opacity-50 transition-colors"
-            >
-              {cancelling ? "취소 처리 중…" : "취소"}
-            </button>
-          ) : isCancelled ? null : (
-            <button
-              type="button"
-              disabled
-              className="cursor-not-allowed rounded-lg bg-slate-200 px-4 py-2 text-sm font-medium text-slate-500"
-              title="진행 단계 이상의 의뢰는 취소할 수 없습니다"
-            >
-              취소
-            </button>
-          )}
         </div>
 
         <section className="mb-6 rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
